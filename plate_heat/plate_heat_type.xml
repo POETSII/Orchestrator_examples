@@ -278,92 +278,92 @@
           ]]></OnSend>
         </OutputPin>  
       </DeviceType>
-    </DeviceTypes>
-    
-    <SupervisorDeviceType id="supervisorNode">
-      <Code><![CDATA[
-        #include <fstream>
-        #include <iostream>
-        #include <sstream>
-        
-        typedef struct{
-          uint8_t fin;
-          uint16_t finIdx;
-          float t;
-        }data_t;
-        
-        uint32_t finCount = 0;
-        uint8_t sentDone = 0;
-        uint8_t nodesDone = 0;
-        
-        data_t data[graphProperties->xSize][graphProperties->ySize];
-      ]]></Code>
-      
-      <InputPin name="finished" messageTypeId="finished">
-        <OnReceive><![CDATA[
-          
-          if((message->x >= graphProperties->xSize) || (message->y >= graphProperties->ySize))
-          {
-            //Something has gone horribly wrong and we have received a message for a node that can't exist.
-          
-          } else {
-            if(message->fin && (message->finIdx > data[message->x][message->y].finIdx))
+      <SupervisorDeviceType id="supervisorNode">
+        <Code><![CDATA[
+          #include <fstream>
+          #include <iostream>
+          #include <sstream>
+
+          typedef struct{
+            uint8_t fin;
+            uint16_t finIdx;
+            float t;
+          }data_t;
+
+          uint32_t finCount = 0;
+          uint8_t sentDone = 0;
+          uint8_t nodesDone = 0;
+
+          data_t data[graphProperties->xSize][graphProperties->ySize];
+        ]]></Code>
+
+        <InputPin name="finished" messageTypeId="finished">
+          <OnReceive><![CDATA[
+
+            if((message->x >= graphProperties->xSize) || (message->y >= graphProperties->ySize))
             {
-              //It's a finished message that is newer than what we have.
-              if(!data[message->x][message->y].fin){ finCount++; }; //Node is not already finished.
-              
-              data[message->x][message->y].fin = 1;
-              data[message->x][message->y].finIdx = message->finIdx;
-              data[message->x][message->y].t = message->t;
-              
-            } else if(message->finIdx >= data[message->x][message->y].finIdx) {
-              //It's a not finished message cancelling the current or future finished message
-              if(data[message->x][message->y].fin){ finCount--; }; //Node is already finished.
-              
-              data[message->x][message->y].fin = 0;
-              data[message->x][message->y].finIdx = message->finIdx;
-              data[message->x][message->y].t = message->t;
-            } //Otherwise do nothing with the finish message as it is .
-            
-            
-            if(finCount >= graphProperties->nodeCount) 
-            {
-              //All of the nodes have finished, do something.
-              nodesDone = 1;
-              
-              if(!sentDone)
+              //Something has gone horribly wrong and we have received a message for a node that can't exist.
+
+            } else {
+              if(message->fin && (message->finIdx > data[message->x][message->y].finIdx))
               {
-                Supervisor::outputs[0]->(*OnSend)(outMsg, msgBuf, 1);
-              } 
-              
-              //TODO: Send Data to MPI Land. Or write to file.
-              
-              //Wite data to CSV
-              std::ofstream oFile;
-              std::ostringstream ss;
-              
-              ss << "plate_" << graphProperties->xSize << "x" << graphProperties->ySize << "_out.csv";
-              oFIie.open(ss.str());
-              oFile.precision(2);
-              
-              oFile << "x, y, temp" << std::endl;
-              
-              for(int ix = 0; ix < graphProperties->xSize; ix++)
+                //It's a finished message that is newer than what we have.
+                if(!data[message->x][message->y].fin){ finCount++; }; //Node is not already finished.
+
+                data[message->x][message->y].fin = 1;
+                data[message->x][message->y].finIdx = message->finIdx;
+                data[message->x][message->y].t = message->t;
+
+              } else if(message->finIdx >= data[message->x][message->y].finIdx) {
+                //It's a not finished message cancelling the current or future finished message
+                if(data[message->x][message->y].fin){ finCount--; }; //Node is already finished.
+
+                data[message->x][message->y].fin = 0;
+                data[message->x][message->y].finIdx = message->finIdx;
+                data[message->x][message->y].t = message->t;
+              } //Otherwise do nothing with the finish message as it is .
+
+
+              if(finCount >= graphProperties->nodeCount)
               {
-                for(int iy = 0; iy < graphProperties->ySize; iy++)
+                //All of the nodes have finished, do something.
+                nodesDone = 1;
+
+                if(!sentDone)
                 {
-                  ofile << ix << ", " << iy << ", " << data[ix][iy].t << std::endl;
+                  Supervisor::outputs[0]->(*OnSend)(outMsg, msgBuf, 1);
                 }
+
+                //TODO: Send Data to MPI Land. Or write to file.
+
+                //Wite data to CSV
+                std::ofstream oFile;
+                std::ostringstream ss;
+
+                ss << "plate_" << graphProperties->xSize << "x" << graphProperties->ySize << "_out.csv";
+                oFile.open(ss.str());
+                oFile.precision(2);
+
+                oFile << "x, y, temp" << std::endl;
+
+                for(int ix = 0; ix < graphProperties->xSize; ix++)
+                {
+                  for(int iy = 0; iy < graphProperties->ySize; iy++)
+                  {
+                    oFile << ix << ", " << iy << ", " << data[ix][iy].t << std::endl;
+                  }
+                }
+                oFile.close();
               }
             }
-          }
-        ]]></OnReceive>
-      </InputPin>
-      
-      <OutputPin name="done" messageTypeId="exit">
-        <OnSend><![CDATA[
-          sentDone = 1;
-        ]]></OnSend>
-      </OutputPin>
-    </SupervisorDeviceType>
+          ]]></OnReceive>
+        </InputPin>
+
+        <OutputPin name="done" messageTypeId="exit">
+          <OnSend><![CDATA[
+            sentDone = 1;
+          ]]></OnSend>
+        </OutputPin>
+      </SupervisorDeviceType>
+    </DeviceTypes>
   </GraphType>
