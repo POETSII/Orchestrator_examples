@@ -192,6 +192,7 @@
         <!-- Experiment Termination Handlers -->
         <OutputPin name="finished" messageTypeId="finished">
           <OnSend><![CDATA[
+            //It's a toggle.
             if(!deviceState->finSent)
             {
               deviceState->finIdx++;    //Increment BEFORE use!!!
