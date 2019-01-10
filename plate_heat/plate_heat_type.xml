@@ -3,6 +3,7 @@
     <SharedCode><![CDATA[
     #include <stdlib.h>
     #include <cmath>
+    int heartbeatIndex = 0;
     ]]></SharedCode>
     
     <Properties>
@@ -124,18 +125,26 @@
           //TODO: Write heartbeat code
           
           if(deviceInstance->deviceID == 0)
-          {           
-            P_Msg_t hbMsg;
-            
-            hbMsg.header.messageLenBytes = sizeof(P_Msg_Hdr_t); // HB is only a header.
-            hbMsg.header.destEdgeIndex = 0; 
-            hbMsg.header.destPin = (deviceInstance->numInputs - 1); //HB is last pin
-            hbMsg.header.messageTag = 0; //HB is first declared message
-            
-            for(int i; i < thread->numDevInsts; i++)    //Loop through the devices on this softswitch
+          {
+            if(heartbeatIndex > 9)  // Execute on every tenth OnIdle.
             {
-              hbMsg.header.destDeviceAddr = i;
-              softswitch_onReceive(deviceInstance->thread, &hbMsg);
+              heartbeatIndex = 0;
+              P_Msg_t hbMsg;
+
+              hbMsg.header.messageLenBytes = sizeof(P_Msg_Hdr_t); // HB is only a header.
+              hbMsg.header.destEdgeIndex = 0;
+              hbMsg.header.destPin = (deviceInstance->numInputs - 1); //HB is last pin
+              hbMsg.header.messageTag = 0; //HB is first declared message
+
+              for(int i; i < thread->numDevInsts; i++)    //Loop through the devices on this softswitch
+              {
+                hbMsg.header.destDeviceAddr = i;
+                softswitch_onReceive(deviceInstance->thread, &hbMsg);
+              }
+            }
+            else
+            {
+              heartbeatIndex++;
             }
           }
         ]]></OnCompute>
