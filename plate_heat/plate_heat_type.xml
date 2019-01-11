@@ -260,7 +260,13 @@
           }
           
         ]]></ReadyToSend>
-        
+
+        <InputPin name="done" messageTypeId="exit">
+          <OnReceive><![CDATA[
+            device->thread->ctrlEnd = 1;
+          ]]></OnReceive>
+        </InputPin>
+
         <OutputPin name="out" messageTypeId="update">
           <OnSend><![CDATA[
             message->t = deviceProperties->t;
