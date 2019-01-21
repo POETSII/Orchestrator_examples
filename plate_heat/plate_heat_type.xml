@@ -4,7 +4,7 @@
     #include <stdlib.h>
     #include <cmath>
     
-    #define USEDEBUG
+    //#define USEDEBUG
     
     int heartbeatIndex = 0;
     ]]></SharedCode>
@@ -351,7 +351,7 @@
           #include <cstdio>
           #include <cmath>
           
-          #define USEDEBUG
+          //#define USEDEBUG
           
           #ifdef USEDEBUG
             #define DEBUG_PRINT(x) std::cout << x << std::endl
