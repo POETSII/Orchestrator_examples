@@ -110,7 +110,30 @@ int main(int argc, const char * argv[]) {
 	std::cout << "<GraphType id=\"" << gType << "\" >" << std::endl;
 	while(std::getline(tFile, line))
 	{
-	    gFile << line << std::endl;		//TODO: modify to only read graph instance, error handling, etc.
+	    std::size_t XSIZE_pos, YSIZE_pos, NODE_pos;
+
+        std::string XSIZE_str ("XSIZE_DEF");
+        std::string YSIZE_str ("YSIZE_DEF");
+        std::string NODE_str ("NODE_DEF");
+
+        XSIZE_pos = line.find(XSIZE_str);
+        YSIZE_pos = line.find(YSIZE_str);
+        NODE_pos = line.find(NODE_str);
+
+        if(XSIZE_pos != std::string::npos){
+            // Line contains XSIZE_DEF - replace with x
+            line.replace(XSIZE_pos, XSIZE_str.length(), std::to_string(xMax));
+        }
+        if (YSIZE_pos != std::string::npos){
+            // Line contains YSIZE_DEF - replace with y
+            line.replace(YSIZE_pos, YSIZE_str.length(), std::to_string(yMax));
+        }
+        if (NODE_pos != std::string::npos){
+            // Line contains NODE_DEF - replace with x*y
+            line.replace(NODE_pos, NODE_str.length(), std::to_string(nodeCount));
+        }
+
+        gFile << line << std::endl;		//TODO: modify to only read graph instance, error handling, etc.
 	}
 	std::cout << std::endl << "</GraphType>" << std::endl;
 	gFile << std::endl;
