@@ -117,17 +117,18 @@ int main(int argc, const char * argv[]) {
         std::string NODE_str ("NODE_DEF");
 
         XSIZE_pos = line.find(XSIZE_str);
-        YSIZE_pos = line.find(YSIZE_str);
-        NODE_pos = line.find(NODE_str);
-
         if(XSIZE_pos != std::string::npos){
             // Line contains XSIZE_DEF - replace with x
             line.replace(XSIZE_pos, XSIZE_str.length(), std::to_string(xMax));
         }
+
+        YSIZE_pos = line.find(YSIZE_str);
         if (YSIZE_pos != std::string::npos){
             // Line contains YSIZE_DEF - replace with y
             line.replace(YSIZE_pos, YSIZE_str.length(), std::to_string(yMax));
         }
+
+        NODE_pos = line.find(NODE_str);
         if (NODE_pos != std::string::npos){
             // Line contains NODE_DEF - replace with x*y
             line.replace(NODE_pos, NODE_str.length(), std::to_string(nodeCount));

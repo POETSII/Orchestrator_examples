@@ -3,6 +3,9 @@
     <SharedCode><![CDATA[
     #include <stdlib.h>
     #include <cmath>
+    
+    #define USEDEBUG
+    
     int heartbeatIndex = 0;
     ]]></SharedCode>
 
@@ -165,7 +168,7 @@
               hbMsg.header.destPin = (deviceInstance->numInputs - 1); //HB is last pin
               hbMsg.header.messageTag = 0; //HB is first declared message
 
-              for(int i; i < deviceInstance->thread->numDevInsts; i++)    //Loop through the devices on this softswitch
+              for(unsigned int i = 0; i < deviceInstance->thread->numDevInsts; i++)    //Loop through the devices on this softswitch
               {
                 hbMsg.header.destDeviceAddr = i;
                 softswitch_onReceive(deviceInstance->thread, &hbMsg);
@@ -227,9 +230,15 @@
               deviceState->finIdx++;    //Increment BEFORE use!!!
               deviceState->finSent = 1;
               message->fin = 1;
+              #if USEDEBUG
+                handler_log(2,"FIN_SENT: %d,%d idx=%d", deviceProperties->x, deviceProperties->y, deviceState->finIdx);
+              #endif
             } else {
               deviceState->finSent = 0;
               message->fin = 0;
+              #if USEDEBUG
+                handler_log(2,"FIN_CANCEL: %d,%d idx=%d", deviceProperties->x, deviceProperties->y, deviceState->finIdx);
+              #endif
             }
             message->finIdx = deviceState->finIdx;
             message->t = deviceState->t;
@@ -241,6 +250,9 @@
 
         <InputPin name="done" messageTypeId="exit">
           <OnReceive><![CDATA[
+            #if USEDEBUG
+              handler_log(2,"CELL_EXIT: %d,%d", deviceProperties->x, deviceProperties->y);
+            #endif
             deviceInstance->thread->ctlEnd = 1;
           ]]></OnReceive>
         </InputPin>
@@ -248,6 +260,10 @@
         <InputPin name="heart_in" messageTypeId="heartbeat">
           <OnReceive><![CDATA[
             deviceState->hc++;
+            
+            #if USEDEBUG
+              handler_log(2,"HB_REC: %d,%d HC=%d", deviceProperties->x, deviceProperties->y, deviceState->hc);
+            #endif
 
             if(deviceState->hc >= deviceProperties->hcMax)
             {
@@ -292,11 +308,13 @@
           } else {
             deviceState->spinCount++;
           }
-
         ]]></ReadyToSend>
 
         <InputPin name="done" messageTypeId="exit">
           <OnReceive><![CDATA[
+            #if USEDEBUG
+              handler_log(2,"CELL_EXIT: %d,%d", deviceProperties->x, deviceProperties->y);
+            #endif
             deviceInstance->thread->ctlEnd = 1;
           ]]></OnReceive>
         </InputPin>
@@ -311,23 +329,42 @@
         <OutputPin name="finished" messageTypeId="finished">
           <OnSend><![CDATA[
             message->fin = 1;
-            message->finIdx = 0;
+            message->finIdx = 1;
             message->t = deviceProperties->t;
 
             message->x = deviceProperties->x;
             message->y = deviceProperties->y;
+            
+            #if USEDEBUG
+              handler_log(2,"FIN_SENT: %d,%d idx=%d", deviceProperties->x, deviceProperties->y, message->finIdx);
+            #endif
           ]]></OnSend>
         </OutputPin>
       </DeviceType>
+      
       <SupervisorDeviceType id="supervisorNode">
         <Code><![CDATA[
           #include <fstream>
           #include <iostream>
           #include <sstream>
+          #include <string>
+          #include <cstdio>
+          #include <cmath>
+          
+          #define USEDEBUG
+          
+          #ifdef USEDEBUG
+            #define DEBUG_PRINT(x) std::cout << x << std::endl
+          #else
+            #define DEBUG_PRINT(x) 
+          #endif 
 
           uint32_t finCount = 0;
           uint8_t sentDone = 0;
           uint8_t nodesDone = 0;
+          
+          //DEBUG_PRINT("HEATED_PLATE_SUPERVISOR");
+          //DEBUG_PRINT("XSIZE_DEFxYSIZE_DEF, NODE_DEF cells");
 
         ]]></Code>
 
@@ -355,7 +392,7 @@
             if((message->x >= sEdgeProperties->xSize) || (message->y >= sEdgeProperties->ySize))
             {
               //Something has gone horribly wrong and we have received a message for a node that can't exist.
-
+              DEBUG_PRINT("ERR_MSG_CELL_NE");
             } else {
               if(message->fin && (message->finIdx > sEdgeState->data_t[message->x][message->y].finIdx))
               {
@@ -379,10 +416,12 @@
               if(finCount >= sEdgeProperties->nodeCount)
               {
                 //All of the nodes have finished, do something.
+                DEBUG_PRINT("\tNODES_DONE: " << fincount);
+                
                 nodesDone = 1;
-
                 if(!sentDone)
                 {
+                  DEBUG_PRINT("\tSEND_DONE");
                   Supervisor::outputs[0]->OnSend(outMsg, msgBuf, 1);
                 }
 
@@ -394,18 +433,24 @@
 
                 ss << "plate_" << sEdgeProperties->xSize << "x" << sEdgeProperties->ySize << "_out.csv";
                 oFile.open(ss.str());
+                DEBUG_PRINT("\tOFILE_OPEN: " << ss.str());
                 oFile.precision(2);
 
                 oFile << "x, y, temp" << std::endl;
+                
+                DEBUG_PRINT("\tRESULTS_WRITE");
 
-                for(int ix = 0; ix < sEdgeProperties->xSize; ix++)
+                for(unsigned int ix = 0; ix < sEdgeProperties->xSize; ix++)
                 {
-                  for(int iy = 0; iy < sEdgeProperties->ySize; iy++)
+                  for(unsigned int iy = 0; iy < sEdgeProperties->ySize; iy++)
                   {
                     oFile << ix << ", " << iy << ", " << sEdgeState->data_t[ix][iy].t << std::endl;
                   }
                 }
+                DEBUG_PRINT("\tRESULTS_WRITEN");
+                
                 oFile.close();
+                DEBUG_PRINT("\tOFILE_CLOSE");
               }
             }
           ]]></OnReceive>
@@ -413,6 +458,7 @@
 
         <OutputPin name="done" messageTypeId="exit">
           <OnSend><![CDATA[
+            DEBUG_PRINT("\t\tSENT_DONE");
             sentDone = 1;
           ]]></OnSend>
         </OutputPin>
