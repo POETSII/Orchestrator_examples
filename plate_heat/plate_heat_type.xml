@@ -5,6 +5,7 @@
     #include <cmath>
     
     //#define USEDEBUG
+    //#define VERBOSEDEBUG
     
     int heartbeatIndex = 0;
     ]]></SharedCode>
@@ -150,6 +151,7 @@
             *readyToSend |= RTS_FLAG_finished;
           } else if(deviceState->updated) {
             *readyToSend |= RTS_FLAG_out;
+            deviceState->updated = 0;
           }
         ]]></ReadyToSend>
 
@@ -184,6 +186,9 @@
         <!-- Device State Handlers -->
         <InputPin name="north_in" messageTypeId="update">
           <OnReceive><![CDATA[
+            #ifdef VERBOSEDEBUG
+              handler_log(2,"N_IN: %d,%d t=%f", deviceProperties->x, deviceProperties->y, message->t);
+            #endif
             deviceState->tNorth = 1;
             deviceState->tNorth = message->t;
             updateTemp(deviceProperties, deviceState);
@@ -192,6 +197,9 @@
 
         <InputPin name="east_in" messageTypeId="update">
           <OnReceive><![CDATA[
+            #ifdef VERBOSEDEBUG
+              handler_log(2,"E_IN: %d,%d t=%f", deviceProperties->x, deviceProperties->y, message->t);
+            #endif
             deviceState->tEast = 1;
             deviceState->tEast = message->t;
             updateTemp(deviceProperties, deviceState);
@@ -200,6 +208,9 @@
 
         <InputPin name="south_in" messageTypeId="update">
           <OnReceive><![CDATA[
+            #ifdef VERBOSEDEBUG
+              handler_log(2,"S_IN: %d,%d t=%f", deviceProperties->x, deviceProperties->y, message->t);
+            #endif
             deviceState->tSouth = 1;
             deviceState->tSouth = message->t;
             updateTemp(deviceProperties, deviceState);
@@ -208,6 +219,9 @@
 
         <InputPin name="west_in" messageTypeId="update">
           <OnReceive><![CDATA[
+            #ifdef VERBOSEDEBUG
+              handler_log(2,"W_IN: %d,%d t=%f", deviceProperties->x, deviceProperties->y, message->t);
+            #endif
             deviceState->tWest = 1;
             deviceState->tWest = message->t;
             updateTemp(deviceProperties, deviceState);
@@ -216,6 +230,9 @@
 
         <OutputPin name="out" messageTypeId="update">
           <OnSend><![CDATA[
+            #ifdef VERBOSEDEBUG
+              handler_log(2,"C_OUT: %d,%d t=%f", deviceProperties->x, deviceProperties->y, deviceState->t);
+            #endif
             deviceState->updated = 0;
             message->t = deviceState->t;
           ]]></OnSend>
@@ -230,13 +247,13 @@
               deviceState->finIdx++;    //Increment BEFORE use!!!
               deviceState->finSent = 1;
               message->fin = 1;
-              #if USEDEBUG
+              #ifdef USEDEBUG
                 handler_log(2,"FIN_SENT: %d,%d idx=%d", deviceProperties->x, deviceProperties->y, deviceState->finIdx);
               #endif
             } else {
               deviceState->finSent = 0;
               message->fin = 0;
-              #if USEDEBUG
+              #ifdef USEDEBUG
                 handler_log(2,"FIN_CANCEL: %d,%d idx=%d", deviceProperties->x, deviceProperties->y, deviceState->finIdx);
               #endif
             }
@@ -250,7 +267,7 @@
 
         <InputPin name="done" messageTypeId="exit">
           <OnReceive><![CDATA[
-            #if USEDEBUG
+            #ifdef USEDEBUG
               handler_log(2,"CELL_EXIT: %d,%d", deviceProperties->x, deviceProperties->y);
             #endif
             deviceInstance->thread->ctlEnd = 1;
@@ -261,7 +278,7 @@
           <OnReceive><![CDATA[
             deviceState->hc++;
             
-            #if USEDEBUG
+            #ifdef USEDEBUG
               handler_log(2,"HB_REC: %d,%d HC=%d", deviceProperties->x, deviceProperties->y, deviceState->hc);
             #endif
 
@@ -312,7 +329,7 @@
 
         <InputPin name="done" messageTypeId="exit">
           <OnReceive><![CDATA[
-            #if USEDEBUG
+            #ifdef USEDEBUG
               handler_log(2,"CELL_EXIT: %d,%d", deviceProperties->x, deviceProperties->y);
             #endif
             deviceInstance->thread->ctlEnd = 1;
@@ -322,6 +339,9 @@
 	
         <OutputPin name="out" messageTypeId="update">
           <OnSend><![CDATA[
+            #ifdef VERBOSEDEBUG
+              handler_log(2,"F_OUT: %d,%d t=%f", deviceProperties->x, deviceProperties->y, deviceProperties->t);
+            #endif
             message->t = deviceProperties->t;
           ]]></OnSend>
         </OutputPin>
@@ -335,11 +355,17 @@
             message->x = deviceProperties->x;
             message->y = deviceProperties->y;
             
-            #if USEDEBUG
+            #ifdef USEDEBUG
               handler_log(2,"FIN_SENT: %d,%d idx=%d", deviceProperties->x, deviceProperties->y, message->finIdx);
             #endif
           ]]></OnSend>
         </OutputPin>
+        
+        <OnCompute><![CDATA[
+          if(!(deviceState->done)){
+            return(1);
+          }
+        ]]></OnCompute>
       </DeviceType>
       
       <SupervisorDeviceType id="supervisorNode">
@@ -416,7 +442,7 @@
               if(finCount >= sEdgeProperties->nodeCount)
               {
                 //All of the nodes have finished, do something.
-                DEBUG_PRINT("\tNODES_DONE: " << fincount);
+                DEBUG_PRINT("\tNODES_DONE: " << finCount);
                 
                 nodesDone = 1;
                 if(!sentDone)
@@ -447,7 +473,8 @@
                     oFile << ix << ", " << iy << ", " << sEdgeState->data_t[ix][iy].t << std::endl;
                   }
                 }
-                DEBUG_PRINT("\tRESULTS_WRITEN");
+                DEBUG_PRINT("\tRESULTS_WRITTEN");
+                
                 
                 oFile.close();
                 DEBUG_PRINT("\tOFILE_CLOSE");
