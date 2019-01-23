@@ -1,0 +1,173 @@
+<?xml version="1.0"?>
+<Graphs xmlns="https://poets-project.org/schemas/virtual-graph-schema-v2">
+  <GraphType id="ping_pong_t">
+    <SharedCode><![CDATA[
+    #include <stdlib.h>
+    #include <cmath>
+    
+    #define USEDEBUG
+    #define VERBOSEDEBUG
+    ]]></SharedCode>
+
+    <MessageTypes>
+      <MessageType id="duff0">
+      </MessageType>
+      
+      <MessageType id="duff1">
+      </MessageType>
+      
+      <MessageType id="duff2">
+      </MessageType>
+      
+      <MessageType id="ping">
+      </MessageType>
+      
+      <MessageType id="pong">
+        <Message>
+          <Scalar type="uint32_t" name="idx"/>
+        </Message>
+      </MessageType>
+
+    </MessageTypes>
+
+    <DeviceTypes>
+      <DeviceType id="cell">
+        <Properties>
+          <Scalar type="uint32_t" name="pingloop" default="10"/>
+          <Scalar type="uint32_t" name="pongloop" default="50"/>
+        </Properties>
+
+        <State>
+          <Scalar type="uint32_t" name="ping" default="50"/>
+          <Scalar type="uint32_t" name="pong" default="0"/>
+          <Scalar type="uint32_t" name="idx" default="0"/>
+          <Scalar type="uint8_t" name="done" default="0"/>
+        </State>
+
+        <SharedCode><![CDATA[
+          const uint32_t RTS_FLAG_ping = (0x1 << 0);
+          const uint32_t RTS_FLAG_pong = (0x1 << 1);
+        ]]></SharedCode>
+
+        <ReadyToSend><![CDATA[
+          *readyToSend = 0;
+          
+          deviceState->ping++;
+          
+          if(deviceState->pong > deviceProperties->pongloop) {
+            *readyToSend |= RTS_FLAG_pong;
+            deviceState->pong = 0;
+          }else if(deviceState->ping > deviceProperties->pingloop) {
+            *readyToSend |= RTS_FLAG_ping;
+            deviceState->ping = 0;
+          }
+          
+        ]]></ReadyToSend>
+
+        <OnCompute><![CDATA[
+          if(deviceState->done == 0){
+            return(1);
+          }
+        ]]></OnCompute>
+
+        <!-- Device State Handlers -->
+        <InputPin name="in" messageTypeId="ping">
+          <OnReceive><![CDATA[
+    #ifdef VERBOSEDEBUG
+            handler_log(2,"P_IN");
+    #endif
+            deviceState->pong++;
+            deviceState->idx++;
+          ]]></OnReceive>
+        </InputPin>
+
+        <OutputPin name="out" messageTypeId="ping">
+          <OnSend><![CDATA[
+    #ifdef VERBOSEDEBUG
+            handler_log(2,"P_OUT");
+    #endif
+          ]]></OnSend>
+        </OutputPin>
+        
+        <OutputPin name="sup_out" messageTypeId="pong">
+          <OnSend><![CDATA[
+    #ifdef USEDEBUG
+            handler_log(2,"PONG");
+    #endif
+            message->idx = deviceState->idx;
+          ]]></OnSend>
+        </OutputPin>
+      </DeviceType>
+      
+      <SupervisorDeviceType id="supervisorNode">
+        <Code><![CDATA[
+          #include <fstream>
+          #include <iostream>
+          #include <sstream>
+          #include <string>
+          #include <cstdio>
+          #include <cmath>
+          
+          #define USEDEBUG
+          #define VERBOSEDEBUG
+          
+          #ifdef USEDEBUG
+            #define DEBUG_PRINT(x) std::cout << x << std::endl
+          #else
+            #define DEBUG_PRINT(x) 
+          #endif 
+          
+          #ifdef VERBOSEDEBUG
+            #define VERBOSE_PRINT(x) std::cout << x << std::endl
+          #else
+            #define VERBOSE_PRINT(x) 
+          #endif 
+        ]]></Code>
+
+        <InputPin name="in" messageTypeId="pong">
+          <Properties>
+            <Scalar type="uint32_t" name="idx"/>
+          </Properties>
+          
+          <State>
+            <Scalar type="uint32_t" name="idx"/>
+          </State>
+          
+          <OnReceive><![CDATA[
+            DEBUG_PRINT("MSG: " << message->idx);
+            
+            //TODO: Send Data to MPI Land. Or write to file.
+
+            //Wite data to CSV
+            std::ofstream oFile;
+            std::ostringstream ss;
+
+            ss << "ping_pong.txt";
+            oFile.open(ss.str(), std::ofstream::out | std::ofstream::app);
+            VERBOSE_PRINT("\tOFILE_OPEN: " << ss.str());
+
+            oFile << message->idx << std::endl;       
+            
+            oFile.close();
+            VERBOSE_PRINT("\tOFILE_CLOSE");
+          ]]></OnReceive>
+        </InputPin>
+      </SupervisorDeviceType>
+    </DeviceTypes>
+  </GraphType>
+
+  <GraphInstance id="ping_pong" graphTypeId="ping_pong_t">
+    <DeviceInstances>
+      <DevI id="c_0_0" type="cell"><P>"pingloop": 10, "pongloop": 50</P></DevI>
+      <DevI id="c_0_1" type="cell"><P>"pingloop": 10, "pongloop": 51</P></DevI>
+    </DeviceInstances>
+    <EdgeInstances>
+      <EdgeI path="c_0_0:in-c_0_1:out"/>
+      
+      <EdgeI path="c_0_1:in-c_0_0:out"/>
+      
+      <EdgeI path=":in-c_0_0:sup_out"/>
+      <EdgeI path=":in-c_0_1:sup_out"/>
+    </EdgeInstances>
+  </GraphInstance>
+</Graphs>
