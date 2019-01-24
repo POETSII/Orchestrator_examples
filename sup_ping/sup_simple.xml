@@ -1,0 +1,86 @@
+<?xml version="1.0"?>
+<Graphs xmlns="https://poets-project.org/schemas/virtual-graph-schema-v2">
+  <GraphType id="sup_simple_t">
+    <SharedCode><![CDATA[   
+    #define USEDEBUG
+    ]]></SharedCode>
+
+    <MessageTypes>
+      <MessageType id="duff0"></MessageType>
+      <MessageType id="duff1"></MessageType>
+      <MessageType id="duff2"></MessageType>
+
+      <MessageType id="ping"></MessageType>
+    </MessageTypes>
+
+    <DeviceTypes>
+      <DeviceType id="cell">
+        <Properties>
+          <Scalar type="uint32_t" name="pingloop" default="50"/>
+        </Properties>
+
+        <State>
+          <Scalar type="uint32_t" name="ping" default="0"/>
+        </State>
+
+        <SharedCode><![CDATA[
+          const uint32_t RTS_FLAG_ping = (0x1 << 0);
+          #define USEDEBUG
+        ]]></SharedCode>
+
+        <ReadyToSend><![CDATA[
+          *readyToSend = 0;
+          
+          if(deviceState->ping < deviceProperties->pingloop) {
+            *readyToSend |= RTS_FLAG_ping;
+    #ifdef USEDEBUG
+            handler_log(2,"PING");
+    #endif
+          } else {
+            deviceState->ping--;
+          }
+        ]]></ReadyToSend>
+
+        <OnCompute><![CDATA[
+          return(1);
+        ]]></OnCompute>
+
+        <!-- Device State Handlers -->
+        <OutputPin name="out" messageTypeId="ping">
+          <OnSend><![CDATA[
+            deviceState->ping = (deviceProperties->pingloop*2);
+          ]]></OnSend>
+        </OutputPin>
+      </DeviceType>
+      
+      <SupervisorDeviceType id="supervisorNode">
+        <Code><![CDATA[
+          #include <iostream>       
+        ]]></Code>
+
+        <InputPin name="in" messageTypeId="ping">         
+          <OnReceive><![CDATA[
+    #ifdef USEDEBUG
+            std::cout << std::endl << std::endl;
+            std::cout << "!********************************************************************************!" << std::endl;
+    #endif
+            std::cout << "!PING!" << std::endl;
+    #ifdef USEDEBUG
+            std::cout << "!********************************************************************************!" << std::endl;
+            std::cout << std::endl << std::endl;
+    #endif        
+          ]]></OnReceive>
+        </InputPin>
+      </SupervisorDeviceType>
+    </DeviceTypes>
+  </GraphType>
+
+  <GraphInstance id="sup_simple" graphTypeId="sup_simple_t">
+    <DeviceInstances>
+      <DevI id="c_0_0" type="cell"><P>"pingloop": 50</P></DevI>
+    </DeviceInstances>
+    <EdgeInstances>
+      <EdgeI path=":in-c_0_0:out"/>
+    </EdgeInstances>
+  </GraphInstance>
+</Graphs>
