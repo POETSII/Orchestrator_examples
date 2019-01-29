@@ -21,8 +21,8 @@
  *============================================================================
  */
 
-#define XDEFAULT 3
-#define YDEFAULT 3
+#define XDEFAULT 40
+#define YDEFAULT 40
 
 #include <iostream>
 #include <vector>
@@ -30,6 +30,8 @@
 #include <fstream>
 #include <stdio.h>
 #include "args/args.hxx"
+
+std::string minChg = "0.00001";
 
 struct fixedNode {
     uint32_t x;
@@ -177,7 +179,7 @@ int main(int argc, const char * argv[]) {
 
 	    } else {
 	        gFile << "      <DevI id=\"c_" << x << "_" << y << "\" type=\"cell\">";
-	        gFile << "<P>\"x\": " << x << ", \"y\": " << y << "</P></DevI>";
+	        gFile << "<P>\"x\": " << x << ", \"y\": " << y << ", \"minChg\": " << minChg << "</P></DevI>";
 	        gFile << std::endl;
 
 	        if(y < yMax-1) //North connection
@@ -210,8 +212,8 @@ int main(int argc, const char * argv[]) {
 	    }
 
 	    //Super Done connection
-	    eFile << "      <EdgeI path=\"c_" << x << "_" << y << ":done-:done";
-	    eFile << "\" />" << std::endl;
+	    //eFile << "      <EdgeI path=\"c_" << x << "_" << y << ":done-:done";
+	    //eFile << "\" />" << std::endl;
 
 	    //Super Finished connection
 	    eFile << "      <EdgeI path=\":finished-c_" << x << "_" << y;
