@@ -73,10 +73,7 @@
           <Scalar type="uint8_t" name="nWest" default="0"/>    <!-- Are we connected to the West? -->
         </State>
 
-        <SharedCode><![CDATA[
-          const uint32_t RTS_FLAG_out = (0x1 << 0);
-          const uint32_t RTS_FLAG_finished = (0x1 << 1);
-	
+        <SharedCode><![CDATA[	
           typedef struct device_state
           {
              float t;
@@ -104,7 +101,7 @@
              uint32_t y;
           }  device_properties_t;
 	  
-          void updateTemp(void* state, float minChg)
+          float updateTemp(void* state)
           {
 	        device_state_t* deviceState = static_cast<device_state_t*>(state);
             float tCalc = 0;
@@ -132,26 +129,29 @@
             
             tCalc = (tCalc/count);
             
-            //only update if the change in out temperature is large enough or we have not run yet
-            if((deviceState->active == 0) || (fabs(tCalc - deviceState->t) >= minChg))
-            {
-              deviceState->hc = 0;
-              deviceState->fin = 0;
-              deviceState->updated = 1;
-              deviceState->t = tCalc;
-              deviceState->active = 1;
-            }
+            return tCalc;
           }
         ]]></SharedCode>
 
         <ReadyToSend><![CDATA[
-          *readyToSend = 0;
-
           if((deviceState->fin == 1) ^ (deviceState->finSent==1))
           {
             *readyToSend |= RTS_FLAG_finished;
           } else if(deviceState->updated) {
-            *readyToSend |= RTS_FLAG_out;
+            deviceState->updated = 0;
+            
+            float tCalc = updateTemp(deviceState);
+            
+            //only update if the change in out temperature is large enough or we have not run yet
+            if((deviceState->active == 0) || (fabs(tCalc - deviceState->t) >= deviceProperties->minChg))
+            {
+              deviceState->hc = 0;
+              deviceState->fin = 0;
+              deviceState->t = tCalc;
+              deviceState->active = 1;
+              
+              *readyToSend |= RTS_FLAG_out;
+            }
           }
         ]]></ReadyToSend>
 
@@ -193,8 +193,7 @@
     #endif
             deviceState->nNorth = 1;
             deviceState->tNorth = message->t;
-            
-            updateTemp(deviceState, deviceProperties->minChg);
+            deviceState->updated = 1;
           ]]></OnReceive>
         </InputPin>
 
@@ -205,8 +204,7 @@
     #endif
             deviceState->nEast = 1;
             deviceState->tEast = message->t;
-            
-            updateTemp(deviceState, deviceProperties->minChg);
+            deviceState->updated = 1;
           ]]></OnReceive>
         </InputPin>
 
@@ -217,8 +215,7 @@
     #endif
             deviceState->nSouth = 1;
             deviceState->tSouth = message->t;
-            
-            updateTemp(deviceState, deviceProperties->minChg);
+            deviceState->updated = 1;
           ]]></OnReceive>
         </InputPin>
 
@@ -229,8 +226,7 @@
     #endif
             deviceState->nWest = 1;
             deviceState->tWest = message->t;
-            
-            updateTemp(deviceState, deviceProperties->minChg);
+            deviceState->updated = 1;
           ]]></OnReceive>
         </InputPin>
 
@@ -239,7 +235,6 @@
     #ifdef VERBOSEDEBUG
             handler_log(2,"C_OUT");
     #endif
-            deviceState->updated = 0;
             message->t = deviceState->t;
           ]]></OnSend>
         </OutputPin>
@@ -324,8 +319,7 @@
         </State>
 
         <SharedCode><![CDATA[
-          const uint32_t RTS_FLAG_out = (0x1 << 0);
-	      const uint32_t RTS_FLAG_finished = (0x1 << 1);
+          
         ]]></SharedCode>
         
         <ReadyToSend><![CDATA[

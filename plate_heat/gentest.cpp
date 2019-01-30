@@ -21,8 +21,8 @@
  *============================================================================
  */
 
-#define XDEFAULT 40
-#define YDEFAULT 40
+#define XDEFAULT 32
+#define YDEFAULT 32
 
 #include <iostream>
 #include <vector>
@@ -31,7 +31,7 @@
 #include <stdio.h>
 #include "args/args.hxx"
 
-std::string minChg = "0.00001";
+std::string minChg = "0.001";
 
 struct fixedNode {
     uint32_t x;
