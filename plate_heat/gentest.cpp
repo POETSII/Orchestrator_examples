@@ -21,8 +21,8 @@
  *============================================================================
  */
 
-#define XDEFAULT 32
-#define YDEFAULT 32
+#define XDEFAULT 3
+#define YDEFAULT 3
 
 #include <iostream>
 #include <vector>
