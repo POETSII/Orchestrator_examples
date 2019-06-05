@@ -5,7 +5,7 @@
     #include <cmath>
     
     //#define LESSDEBUG
-    #define USEDEBUG
+    //#define USEDEBUG
     //#define VERBOSEDEBUG
     
     int heartbeatIndex = 0;
@@ -46,7 +46,7 @@
         <!-- This is a common-or-garden 2d cell, with no boundary stuff -->
         <Properties>
           <Scalar type="float" name="minChg" default="0.1"/>
-          <Scalar type="uint16_t" name="hcMax" default="10"/>
+          <Scalar type="uint16_t" name="hcMax" default="HCMAX_DEF"/>
           <Scalar type="uint32_t" name="x"/>
           <Scalar type="uint32_t" name="y"/>
         </Properties>
@@ -56,30 +56,32 @@
           <Scalar type="uint16_t" name="hc" default="0"/>        <!-- Heartbeat Count -->
           <Scalar type="uint8_t" name="updated" default="0"/>
           <Scalar type="uint8_t" name="active" default="0"/>
+          <Scalar type="uint8_t" name="activeCount" default="0"/>
           <Scalar type="uint8_t" name="fin" default="0"/>        <!-- Finished Flag -->
           <Scalar type="uint8_t" name="finSent" default="0"/>        <!-- Finished Flag -->
           <Scalar type="uint16_t" name="finIdx" default="0"/>        <!-- Finished Index -->
 
-          <Scalar type="float" name="tNorth"/>        <!-- North temperature -->
+          <Scalar type="float" name="tNorth" default="0.0"/>        <!-- North temperature -->
           <Scalar type="uint8_t" name="nNorth" default="0"/>    <!-- Are we connected to the North? Could be done as a property if we don't discover... -->
 
-          <Scalar type="float" name="tEast"/>        <!-- East temperature -->
+          <Scalar type="float" name="tEast" default="0.0"/>        <!-- East temperature -->
           <Scalar type="uint8_t" name="nEast" default="0"/>    <!-- Are we connected to the East? -->
 
-          <Scalar type="float" name="tSouth"/>        <!-- South temperature -->
+          <Scalar type="float" name="tSouth" default="0.0"/>        <!-- South temperature -->
           <Scalar type="uint8_t" name="nSouth" default="0"/>    <!-- Are we connected to the South? -->
 
-          <Scalar type="float" name="tWest"/>        <!-- West temperature -->
+          <Scalar type="float" name="tWest" default="0.0"/>        <!-- West temperature -->
           <Scalar type="uint8_t" name="nWest" default="0"/>    <!-- Are we connected to the West? -->
         </State>
 
-        <SharedCode><![CDATA[	
+        <SharedCode><![CDATA[
           typedef struct device_state
           {
              float t;
              uint16_t hc;
              uint8_t updated;
              uint8_t active;
+             uint8_t activeCount;
              uint8_t fin;
              uint8_t finSent;
              uint16_t finIdx;
@@ -92,7 +94,9 @@
              float tWest;
              uint8_t nWest;
           }  device_state_t;
-	     
+
+          float thirdMul = 1.0/3;
+          
           typedef struct device_properties
           {
              float minChg;
@@ -100,36 +104,39 @@
              uint32_t x;
              uint32_t y;
           }  device_properties_t;
-	  
-          float updateTemp(void* state)
+          
+          void updateTemp(void* state, const void* props)
           {
 	        device_state_t* deviceState = static_cast<device_state_t*>(state);
+            const device_properties_t* deviceProperties = static_cast<const device_properties_t*>(props);
             float tCalc = 0;
-            uint8_t count = 0;
 
-            if(deviceState->nNorth) {
-              tCalc += deviceState->tNorth;
-              count++;
+            tCalc += deviceState->tNorth;
+            tCalc += deviceState->tEast;
+            tCalc += deviceState->tSouth;
+            tCalc += deviceState->tWest;
+            
+            switch(deviceState->activeCount){
+              case 4:   tCalc = (tCalc*0.25);
+                        break;
+              case 3:   tCalc = (tCalc*thirdMul); //0x3eaaaaab);
+                        break;
+              case 2:   tCalc = (tCalc*0.5);
+                        break;
+              default:  break;   // 1 edge, no calc to do
             }
 
-            if(deviceState->nEast) {
-              tCalc += deviceState->tEast;
-              count++;
-            }
-
-            if(deviceState->nSouth) {
-              tCalc += deviceState->tSouth;
-              count++;
-            }
-
-            if(deviceState->nWest) {
-              tCalc += deviceState->tWest;
-              count++;
+            //only update if the change in our temperature is large enough or we have not run yet
+            if((deviceState->active == 0) || (fabs(tCalc - deviceState->t) >= deviceProperties->minChg))
+            {
+              deviceState->hc = 0;
+              deviceState->fin = 0;
+              deviceState->t = tCalc;
+              deviceState->active = 1;
+              deviceState->updated = 1;
             }
             
-            tCalc = (tCalc/count);
-            
-            return tCalc;
+            //return tCalc;
           }
         ]]></SharedCode>
 
@@ -138,20 +145,7 @@
           {
             *readyToSend |= RTS_FLAG_finished;
           } else if(deviceState->updated) {
-            deviceState->updated = 0;
-            
-            float tCalc = updateTemp(deviceState);
-            
-            //only update if the change in out temperature is large enough or we have not run yet
-            if((deviceState->active == 0) || (fabs(tCalc - deviceState->t) >= deviceProperties->minChg))
-            {
-              deviceState->hc = 0;
-              deviceState->fin = 0;
-              deviceState->t = tCalc;
-              deviceState->active = 1;
-              
-              *readyToSend |= RTS_FLAG_out;
-            }
+            *readyToSend |= RTS_FLAG_out;
           }
         ]]></ReadyToSend>
 
@@ -160,7 +154,7 @@
 
           if(deviceInstance->deviceID == 0)
           {
-            if(heartbeatIndex > 9)  // Execute on every tenth OnIdle.
+            if(heartbeatIndex > HBIDX_DEF)  // Execute on every tenth OnIdle.
             {
               heartbeatIndex = 0;
               P_Msg_t hbMsg;
@@ -191,9 +185,14 @@
     #ifdef VERBOSEDEBUG
             handler_log(2,"N_IN");
     #endif
-            deviceState->nNorth = 1;
+            if(deviceState->nNorth == 0)
+            {
+              deviceState->nNorth = 1;
+              deviceState->activeCount++;
+            }
+            
             deviceState->tNorth = message->t;
-            deviceState->updated = 1;
+            updateTemp(deviceState, deviceProperties);
           ]]></OnReceive>
         </InputPin>
 
@@ -202,9 +201,14 @@
     #ifdef VERBOSEDEBUG
             handler_log(2,"E_IN");
     #endif
-            deviceState->nEast = 1;
+            if(deviceState->nEast == 0)
+            {
+              deviceState->nEast = 1;
+              deviceState->activeCount++;
+            }
+            
             deviceState->tEast = message->t;
-            deviceState->updated = 1;
+            updateTemp(deviceState, deviceProperties);
           ]]></OnReceive>
         </InputPin>
 
@@ -213,9 +217,14 @@
     #ifdef VERBOSEDEBUG
             handler_log(2,"S_IN");
     #endif
-            deviceState->nSouth = 1;
+            if(deviceState->nSouth == 0)
+            {
+              deviceState->nSouth = 1;
+              deviceState->activeCount++;
+            }
+            
             deviceState->tSouth = message->t;
-            deviceState->updated = 1;
+            updateTemp(deviceState, deviceProperties);
           ]]></OnReceive>
         </InputPin>
 
@@ -224,9 +233,14 @@
     #ifdef VERBOSEDEBUG
             handler_log(2,"W_IN");
     #endif
-            deviceState->nWest = 1;
+            if(deviceState->nWest == 0)
+            {
+              deviceState->nWest = 1;
+              deviceState->activeCount++;
+            }
+            
             deviceState->tWest = message->t;
-            deviceState->updated = 1;
+            updateTemp(deviceState, deviceProperties);
           ]]></OnReceive>
         </InputPin>
 
@@ -236,6 +250,7 @@
             handler_log(2,"C_OUT");
     #endif
             message->t = deviceState->t;
+            deviceState->updated = 0;
           ]]></OnSend>
         </OutputPin>
 
@@ -296,7 +311,7 @@
             } else {
     #ifdef VERBOSEDEBUG
               //handler_log(2,"HB_IGN");
-    #endif        
+    #endif
             }
           ]]></OnReceive>
         </InputPin>
@@ -305,19 +320,17 @@
       <DeviceType id="fixedNode">
         <Properties>
           <Scalar name="t" type="float" default="21.0"/>
-          <Scalar type="uint16_t" name="maxSpin" default="10"/>
-          <Scalar type="uint16_t" name="maxUpdate" default="5"/>
+          <Scalar type="uint16_t" name="maxUpdate" default="1"/>
           <Scalar type="uint32_t" name="x" default="0"/>
           <Scalar type="uint32_t" name="y" default="0"/>
         </Properties>
 
         <State>
-          <Scalar type="uint16_t" name="spinCount" default="0"/>
           <Scalar type="uint16_t" name="updateCount" default="0"/>
           <Scalar type="uint8_t" name="done" default="0"/>
           <Scalar type="uint8_t" name="finSent" default="0"/>
         </State>
-
+        
         <SharedCode><![CDATA[
           
         ]]></SharedCode>
@@ -330,15 +343,13 @@
             deviceInstance->thread->ctlEnd = 1;
           } else if(deviceState->finSent==0){
             if(deviceState->updateCount >= deviceProperties->maxUpdate) {
-              deviceState->finSent = 1; //Guarantee that we don't send dupes
+              //deviceState->finSent = 1; //Guarantee that we don't send dupes
               *readyToSend |= RTS_FLAG_finished;
-            } else if(deviceState->spinCount >= deviceProperties->maxSpin) {
-              *readyToSend |= RTS_FLAG_out;
-              deviceState->spinCount = 0;
-              deviceState->updateCount++;
             } else {
-              deviceState->spinCount++;
+              *readyToSend |= RTS_FLAG_out;
             }
+          } else {
+            //return 0;
           }
         ]]></ReadyToSend>
 
@@ -350,17 +361,17 @@
             deviceInstance->thread->ctlEnd = 1;
           ]]></OnReceive>
         </InputPin>
-
-	
+        
         <OutputPin name="out" messageTypeId="update">
           <OnSend><![CDATA[
             #ifdef VERBOSEDEBUG
               handler_log(2,"F_OUT");
             #endif
             message->t = deviceProperties->t;
+            deviceState->updateCount++;
           ]]></OnSend>
         </OutputPin>
-
+        
         <OutputPin name="finished" messageTypeId="finished">
           <OnSend><![CDATA[
             message->fin = 1;
@@ -397,23 +408,26 @@
           #include <cmath>
           
           #define USEDEBUG
-          #define VERBOSEDEBUG
+          //#define VERBOSEDEBUG
           
           #ifdef USEDEBUG
             #define DEBUG_PRINT(x) std::cout << std::setprecision(2) << x << std::endl
           #else
-            #define DEBUG_PRINT(x) 
-          #endif 
+            #define DEBUG_PRINT(x)
+          #endif
           
           #ifdef VERBOSEDEBUG
             #define VERBOSE_PRINT(x) std::cout << std::setprecision(2) << x << std::endl
           #else
-            #define VERBOSE_PRINT(x) 
-          #endif 
+            #define VERBOSE_PRINT(x)
+          #endif
           
           uint32_t finCount = 0;
           uint8_t sentDone = 0;
           uint8_t nodesDone = 0;
+          uint8_t finRec = 0;
+
+          time_t tStart, tEnd;
           
           //DEBUG_PRINT("HEATED_PLATE_SUPERVISOR");
           //DEBUG_PRINT("3x3, 9 cells");
@@ -447,11 +461,25 @@
               DEBUG_PRINT("ERR_MSG_CELL_NE");
             } else {
               uint64_t loc = (message->x*sEdgeProperties->xSize) + message->y;
-            
+              
               if(message->fin && (message->finIdx > sEdgeState->data_t[loc].finIdx))
               {
                 //It's a finished message that is newer than what we have.
                 VERBOSE_PRINT("\tFIN:" << message->x << "," << message->y << " IDX:" << message->finIdx << " T:"  << message->t);
+
+                if(finRec == 0)
+                {
+                  //First rec, start timing.
+                  finRec = 1;
+                  tStart = std::time(NULL);
+                  std::ofstream tFile;
+                  std::ostringstream sst;
+                  sst << "plate_" << sEdgeProperties->xSize << "x" << sEdgeProperties->ySize << "_time.txt";
+                  tFile.open(sst.str());
+                  tFile << message->x << "," << message->y << ":" << tStart << std::endl;
+                  tFile.close();
+                }
+
                 if(!sEdgeState->data_t[loc].fin){ finCount++; }; //Node is not already finished.
 
                 sEdgeState->data_t[loc].fin = 1;
@@ -470,12 +498,11 @@
                 VERBOSE_PRINT("\tIGNORED:" << message->fin << " " << message->x << "," << message->y << " IDX:" << message->finIdx);
               }
               
-              VERBOSE_PRINT("\tFINCOUNT:" << finCount << "/" << sEdgeProperties->nodeCount);
+              DEBUG_PRINT("\tFINCOUNT:" << finCount << "/" << sEdgeProperties->nodeCount);
               
               //Periodic node count updates
               if(sEdgeState->loopCount == 0){
                 DEBUG_PRINT("\tNODES_DONE: " << finCount << "/" << sEdgeProperties->nodeCount);
-                
                 
                 char buffer [100];
                 int cx;
@@ -492,6 +519,15 @@
               if(finCount >= sEdgeProperties->nodeCount)
               {
                 //All of the nodes have finished, do something.
+                //Last rec, Finish timing.
+                tEnd = std::time(NULL);
+                std::ofstream tFile;
+                std::ostringstream sst;
+                sst << "plate_" << sEdgeProperties->xSize << "x" << sEdgeProperties->ySize << "_time.txt";
+                tFile.open(sst.str(), std::ofstream::out | std::ofstream::app);
+                tFile << message->x << "," << message->y << ":" << tEnd << "\tElapsed(s): " << (tEnd - tStart)<< std::endl;
+                tFile.close();
+
                 DEBUG_PRINT("\tNODES_DONE: " << finCount);
                 //handler_log(2, "ALL NODES_DONE");
                 
@@ -528,7 +564,6 @@
                   }
                 }
                 DEBUG_PRINT("\tRESULTS_WRITTEN");
-                
                 
                 oFile.close();
                 DEBUG_PRINT("\tOFILE_CLOSE");
