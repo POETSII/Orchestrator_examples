@@ -151,13 +151,17 @@ int main(int argc, const char * argv[]) {
         std::cout << "\t<10000" << std::endl;
         hbIdxScale = 1000;
         hcMaxScale = 10;
+    } else if(nodeCount<100000) {
+        std::cout << "\t<100000" << std::endl;
+        hbIdxScale = 10000;
+        hcMaxScale = 10;
     } else if(nodeCount<700000) {
         std::cout << "\t<700000" << std::endl;
-        hbIdxScale = 1000;
+        hbIdxScale = 10000;
         hcMaxScale = 100;
     } else if (nodeCount<1000000) {
         std::cout << "\t<1000000" << std::endl;
-        hbIdxScale = 10000; 
+        hbIdxScale = 100000; 
         hcMaxScale = 1000;
     } else {
         std::cout << "\t>1000000" << std::endl;
