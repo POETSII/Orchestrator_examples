@@ -147,14 +147,18 @@ int main(int argc, const char * argv[]) {
 
 
     unsigned hcMaxScale, hbIdxScale;
-    if(nodeCount<10000) {
-        std::cout << "\t<10000" << std::endl;
+    if(nodeCount<50000) {
+        std::cout << "\t<1000" << std::endl;
         hbIdxScale = 1000;
         hcMaxScale = 10;
     } else if(nodeCount<100000) {
         std::cout << "\t<100000" << std::endl;
         hbIdxScale = 10000;
         hcMaxScale = 10;
+	} else if(nodeCount<100000) {
+        std::cout << "\t<100000" << std::endl;
+        hbIdxScale = 10000;
+        hcMaxScale = 100;
     } else if(nodeCount<700000) {
         std::cout << "\t<700000" << std::endl;
         hbIdxScale = 10000;
