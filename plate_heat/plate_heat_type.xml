@@ -81,10 +81,10 @@
         <!-- This is a common-or-garden 2d cell, with no boundary stuff -->
         <Properties>
           <![CDATA[
-            float minChg = 0.5;         // 0.3125
-            uint16_t hcMax = HCMAX_DEF;
             uint32_t x;
             uint32_t y;
+            float minChg = 0.5;         // 0.3125
+            uint16_t hcMax = HCMAX_DEF;
           ]]>
         </Properties>
 
@@ -429,9 +429,9 @@
         <Properties>
           <![CDATA[
             float t = 21.0;
-            uint16_t maxUpdate = 1;
             uint32_t x = 0;
             uint32_t y = 0;
+            uint16_t maxUpdate = 1;
           ]]>
         </Properties>
 

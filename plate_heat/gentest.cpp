@@ -303,8 +303,8 @@ int main(int argc, const char * argv[]) {
     //Write XML Preamble.
     gFile << "<?xml version=\"1.0\"?>" << std::endl;
     std::cout << "<?xml version=\"1.0\"?>" << std::endl;
-    gFile << "<Graphs xmlns=\"https://poets-project.org/schemas/virtual-graph-schema-v2\">" << std::endl;
-    std::cout << "<Graphs xmlns=\"https://poets-project.org/schemas/virtual-graph-schema-v2\">" << std::endl;
+    gFile << "<Graphs xmlns=\"https://poets-project.org/schemas/virtual-graph-schema-v4\" formatMinorVersion=\"0\">" << std::endl;
+    std::cout << "<Graphs xmlns=\"https://poets-project.org/schemas/virtual-graph-schema-v4\" formatMinorVersion=\"0\">" << std::endl;
 
 
     unsigned hcMaxScale, hbIdxScale;
@@ -390,16 +390,19 @@ int main(int argc, const char * argv[]) {
 
     //Form the GraphInstance member
     std::ostringstream ssInst;
-    ssInst << "  <GraphInstance id=\"" << gIDstr << "\" graphTypeId=\"" << gType << "\">" << std::endl;
-    ssInst << "<Properties>\"xSize\": " << xMax << ", \"ySize\": " << yMax << ", \"nodeCount\": " << nodeCount << "</Properties>";
+    ssInst << "  <GraphInstance id=\"" << gIDstr << "\" ";
+    ssInst << "graphTypeId=\"" << gType << "\" ";
+    ssInst << "P=\"{" << xMax << "," << yMax << "," << nodeCount << "}\"/>";
+    ssInst << std::endl;
+
     gInstance = ssInst.str();
 
     //Write all of the instance preamble
-    std::cout << gInstance << std::endl;
-    gFile << gInstance << std::endl;
+    std::cout << gInstance;
+    gFile << gInstance;
     gFile << "    <DeviceInstances>" << std::endl;
     std::cout << "    <DeviceInstances>" << std::endl;
-    eFile << "    <EdgeInstances>" << std::endl;
+    eFile << std::endl << "    <EdgeInstances>" << std::endl;
 
     //Loop through all devices and write device instance + edge instance.
     //for(x=0; x<xMax; x++)
