@@ -311,11 +311,11 @@ int main(int argc, const char * argv[]) {
     unsigned hcMaxScale, hbIdxScale;
     if(nodeCount<50000) {
         std::cout << "\t<1000" << std::endl;
-        hbIdxScale = 5000;
+        hbIdxScale = 1000;
         hcMaxScale = 10;
     } else if(nodeCount<100000) {
         std::cout << "\t<100000" << std::endl;
-        hbIdxScale = 5000;
+        hbIdxScale = 2000;
         hcMaxScale = 10;
     } else if(nodeCount<100000) {
         std::cout << "\t<100000" << std::endl;
