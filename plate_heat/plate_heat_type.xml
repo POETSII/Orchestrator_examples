@@ -12,9 +12,11 @@
     ]]></SharedCode>
 
     <Properties>
-      <Scalar type="uint32_t" name="xSize" default="10"/>
-      <Scalar type="uint32_t" name="ySize" default="10"/>
-      <Scalar type="uint32_t" name="nodeCount" default="100"/>
+      <![CDATA[
+        uint32_t xSize = 10;
+        uint32_t ySize = 10;
+        uint32_t nodeCOunt = 100;
+      ]]>
     </Properties>
 
     <MessageTypes>
@@ -23,43 +25,50 @@
       
       <MessageType id="instr">
         <Message>
-            <!-- 2nd FLIT -->
-            <Scalar type="uint32_t" name="threadID"/>
-            <Scalar type="uint32_t" name="cIDX"/>
-            <Scalar type="uint32_t" name="cycles"/>
-            <Scalar type="uint32_t" name="txCnt"/>
+          <![CDATA[
+            //2nd Flit
+            uint32_t threadID;
+            uint32_t cIDX;
+            uint32_t cycles;
+            uint32_t txCnt;
             
-            <!-- 3rd FLIT -->
-            <Scalar type="uint32_t" name="supCnt"/>
-            <Scalar type="uint32_t" name="rxCnt"/>
-            <Scalar type="uint32_t" name="rxHanCnt"/>
-            <Scalar type="uint32_t" name="txHanCnt"/>
+            //3rd Flit
+            uint32_t supCnt;
+            uint32_t rxCnt;
+            uint32_t rxHanCnt;
+            uint32_t txHanCnt;
             
-            <!-- 4th FLIT -->
-            <Scalar type="uint32_t" name="idleCnt"/>
-            <Scalar type="uint32_t" name="idleHanCnt"/>
-            <Scalar type="uint32_t" name="heartbeatIndex"/>
+            //4th Flit
+            uint32_t idleCnt;
+            uint32_t idleHanCnt;
+            uint32_t heartbeatIndex;
+          ]]>
         </Message>
       </MessageType>
 
       <MessageType id="update">
         <Message>
-          <Scalar type="float" name="t"/>
+          <![CDATA[
+            float t;
+          ]]>
         </Message>
       </MessageType>
 
       <MessageType id="finished">
         <Message>
-            <Scalar type="uint32_t" name="x"/>
-            <Scalar type="uint32_t" name="y"/>
-            <Scalar type="float" name="t"/>
-            <Scalar type="uint32_t" name="finIdx"/>
-            <Scalar type="uint32_t" name="nCnt"/>
-            <Scalar type="uint32_t" name="eCnt"/>
-            <Scalar type="uint32_t" name="sCnt"/>
-            <Scalar type="uint32_t" name="wCnt"/>
-            <Scalar type="uint32_t" name="oCnt"/>
-            <Scalar type="uint8_t" name="fin"/>
+          <![CDATA[
+            uint32_t x;
+            uint32_t y;
+            float t;
+            uint32_t finIdx;
+            uint32_t nCnt;
+            uint32_t rxCnt;
+            uint32_t eCnt;
+            uint32_t sCnt;
+            uint32_t wCnt;
+            uint32_t oCnt;
+            uint8_t fin;
+          ]]>
         </Message>
       </MessageType>
 
@@ -71,40 +80,44 @@
       <DeviceType id="cell">
         <!-- This is a common-or-garden 2d cell, with no boundary stuff -->
         <Properties>
-          <Scalar type="float" name="minChg" default="0.5"/>
-          <!-- <Scalar type="float" name="minChg" default="0.03125"/> -->
-          <Scalar type="uint16_t" name="hcMax" default="HCMAX_DEF"/>
-          <Scalar type="uint32_t" name="x"/>
-          <Scalar type="uint32_t" name="y"/>
+          <![CDATA[
+            float minChg = 0.5;         // 0.3125
+            uint16_t hcMax = HCMAX_DEF;
+            uint32_t x;
+            uint32_t y;
+          ]]>
         </Properties>
 
         <State>
-          <Scalar type="float" name="t" default="0.0"/>            <!-- Our temperature -->
-          <Scalar type="uint16_t" name="hc" default="0"/>        <!-- Heartbeat Count -->
-          <Scalar type="uint8_t" name="updated" default="0"/>
-          <Scalar type="uint8_t" name="active" default="0"/>
-          <Scalar type="uint8_t" name="activeCount" default="0"/>
-          <Scalar type="uint8_t" name="fin" default="0"/>        <!-- Finished Flag -->
-          <Scalar type="uint8_t" name="finSent" default="0"/>        <!-- Finished Flag -->
-          <Scalar type="uint16_t" name="finIdx" default="0"/>        <!-- Finished Index -->
-
-          <Scalar type="float" name="tNorth" default="0.0"/>        <!-- North temperature -->
-          <Scalar type="uint8_t" name="nNorth" default="0"/>    <!-- Are we connected to the North? Could be done as a property if we don't discover... -->
-
-          <Scalar type="float" name="tEast" default="0.0"/>        <!-- East temperature -->
-          <Scalar type="uint8_t" name="nEast" default="0"/>    <!-- Are we connected to the East? -->
-
-          <Scalar type="float" name="tSouth" default="0.0"/>        <!-- South temperature -->
-          <Scalar type="uint8_t" name="nSouth" default="0"/>    <!-- Are we connected to the South? -->
-
-          <Scalar type="float" name="tWest" default="0.0"/>        <!-- West temperature -->
-          <Scalar type="uint8_t" name="nWest" default="0"/>    <!-- Are we connected to the West? -->
-          
-          <Scalar type="uint32_t" name="nCnt" default="0"/>
-          <Scalar type="uint32_t" name="eCnt" default="0"/>
-          <Scalar type="uint32_t" name="sCnt" default="0"/>
-          <Scalar type="uint32_t" name="wCnt" default="0"/>
-          <Scalar type="uint32_t" name="oCnt" default="0"/>
+          <![CDATA[
+            float t = 0.0               // Our temeperature
+            uint16_t hc = 0;            // Heartbeat Count
+            uint8_t updated = 0;
+            uint8_t active = 0;
+            uint8_t activeCount = 0;
+            uint8_t fin = 0;            // Finished Flag
+            uint8_t finSent = 0;        // Finished Sent Flag
+            uint16_t finIdx = 0;        // Finished Flag
+            
+            float tNorth = 0.0;         // North temperature
+            uint8_t nNorth = 0;         // Are we connected to the North? Could be done as a property if we don't discover...
+            
+            float tEast = 0.0;          // East temperature
+            uint8_t nEast = 0;          // Are we connected to the East?
+            
+            float tSouth = 0.0;         // South temperature
+            uint8_t nSouth = 0;         // Are we connected to the South?
+            
+            float tWest = 0.0;          // West temperature
+            uint8_t nWest = 0;          // Are we connected to the West? 
+            
+            uint32_t nCnt = 0;
+            uint32_t eCnt = 0;
+            uint32_t sCnt = 0;
+            uint32_t wCnt = 0;
+            uint32_t oCnt = 0;
+            
+          ]]>
         </State>
 
         <SharedCode><![CDATA[
@@ -112,38 +125,38 @@
         
           typedef struct device_state
           {
-             float t;
-             uint16_t hc;
-             uint8_t updated;
-             uint8_t active;
-             uint8_t activeCount;
-             uint8_t fin;
-             uint8_t finSent;
-             uint16_t finIdx;
-             float tNorth;
-             uint8_t nNorth;
-             float tEast;
-             uint8_t nEast;
-             float tSouth;
-             uint8_t nSouth;
-             float tWest;
-             uint8_t nWest;
-             uint32_t nCnt;
-             uint32_t eCnt;
-             uint32_t sCnt;
-             uint32_t wCnt;
-             uint32_t oCnt;
-          }  device_state_t;
+            float t;
+            uint16_t hc;
+            uint8_t updated;
+            uint8_t active;
+            uint8_t activeCount;
+            uint8_t fin;
+            uint8_t finSent;
+            uint16_t finIdx;
+            float tNorth;
+            uint8_t nNorth;
+            float tEast;
+            uint8_t nEast;
+            float tSouth;
+            uint8_t nSouth;
+            float tWest;
+            uint8_t nWest;
+            uint32_t nCnt;
+            uint32_t eCnt;
+            uint32_t sCnt;
+            uint32_t wCnt;
+            uint32_t oCnt;
+          } device_state_t;
 
           float thirdMul = 1.0/3;
           
           typedef struct device_properties
           {
-             float minChg;
-             uint16_t hcMax;
-             uint32_t x;
-             uint32_t y;
-          }  device_properties_t;
+            float minChg;
+            uint16_t hcMax;
+            uint32_t x;
+            uint32_t y;
+          } device_properties_t;
           
           void updateTemp(void* state, const void* props)
           {
@@ -414,17 +427,21 @@
 
       <DeviceType id="fixedNode">
         <Properties>
-          <Scalar name="t" type="float" default="21.0"/>
-          <Scalar type="uint16_t" name="maxUpdate" default="1"/>
-          <Scalar type="uint32_t" name="x" default="0"/>
-          <Scalar type="uint32_t" name="y" default="0"/>
+          <![CDATA[
+            float t = 21.0;
+            uint16_t maxUpdate = 1;
+            uint32_t x = 0;
+            uint32_t y = 0;
+          ]]>
         </Properties>
 
         <State>
-          <Scalar type="uint16_t" name="updateCount" default="0"/>
-          <Scalar type="uint8_t" name="done" default="0"/>
-          <Scalar type="uint8_t" name="finSent" default="0"/>
-          <Scalar type="uint8_t" name="updated" default="0"/>
+          <![CDATA[
+            uint16_t updateCount = 0;
+            uint8_t done = 0;
+            uint8_t finSent = 0;
+            uint8_t updated = 0;
+          ]]>
         </State>
         
         <SharedCode><![CDATA[
@@ -541,17 +558,19 @@
         <!-- This is a complete hack and needs some thought in how to parameterise. -->
         <InputPin name="instr" messageTypeId="instr">
           <Properties>
-            <Scalar type="uint32_t" name="xSize" default="XSIZE_DEF"/>
-            <Scalar type="uint32_t" name="ySize" default="YSIZE_DEF"/>
+          <![CDATA[
+            uint32_t xSize = XSIZE_DEF;
+            uint32_t ySize = YSIZE_DEF;
+          ]]>
           </Properties>
           <State>
-            <Array name="data" length="THREAD_DEF">
-              <Tuple name="data_t">
-                <Scalar type="double" name="time" default="0.0"/>
-                <Scalar type="uint64_t" name="sentCount" default="0"/>
-                <Scalar type="uint64_t" name="rxCount" default="0"/>
-              </Tuple>
-            </Array>
+            <![CDATA[
+              struct {
+                double time = 0.0;
+                uint64_t sentCount = 0;
+                uint64_t rxCount = 0;
+              } data[THREAD_DEF];
+            ]]>
           </State>
           <OnReceive><![CDATA[
 #ifdef __INSTRUMENTATION
@@ -614,25 +633,27 @@
         <!-- This is a complete hack and needs some thought in how to parameterise. -->
         <InputPin name="finished" messageTypeId="finished">
           <Properties>
-            <Scalar type="uint32_t" name="xSize" default="XSIZE_DEF"/>
-            <Scalar type="uint32_t" name="ySize" default="YSIZE_DEF"/>
-            <Scalar type="uint32_t" name="nodeCount" default="NODE_DEF"/>
-            <Scalar type="uint32_t" name="loopMax" default="1000"/>
+            <![CDATA[
+              uint32_t xSize = XSIZE_DEF;
+              uint32_t ySize = YSIZE_DEF;
+              uint32_t nodeCount = NODE_DEF;
+              uint32_t loopMax = 1000;
+            ]]>
           </Properties>
           <State>
-            <Array name="data" length="NODE_DEF">
-              <Tuple name="data_t">
-                <Scalar type="uint8_t" name="fin" default="0"/>
-                <Scalar type="uint16_t" name="finIdx" default="0"/>
-                <Scalar type="float" name="t" default="0.0"/>
-                <Scalar type="uint32_t" name="nCnt" default="0"/>
-                <Scalar type="uint32_t" name="eCnt" default="0"/>
-                <Scalar type="uint32_t" name="sCnt" default="0"/>
-                <Scalar type="uint32_t" name="wCnt" default="0"/>
-                <Scalar type="uint32_t" name="oCnt" default="0"/>
-              </Tuple>
-            </Array>
-            <Scalar type="uint32_t" name="loopCount" default="0"/>
+            <![CDATA[
+              struct {
+                uint8_t fin = 0;
+                uint16_t finIdx = 0;
+                float t = 0.0;
+                uint32_t nCnt = 0;
+                uint32_t eCnt = 0;
+                uint32_t sCnt = 0;
+                uint32_t wCnt = 0;
+                uint32_t oCnt = 0;
+              } data[NODE_DEF];
+              uint32_t loopCount = 0;
+            ]]>
           </State>
           <OnReceive><![CDATA[
             VERBOSE_PRINT("MSG:");

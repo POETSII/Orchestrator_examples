@@ -62,10 +62,10 @@ void writeDev(uint32_t x, uint32_t y, std::vector<fixedNode>& fNodes,
     if(isFixed)
     {
         gFile << "      <DevI id=\"c_" << x << "_" << y; 
-        gFile << "\" type=\"fixedNode\">";
-        gFile << "<P>\"t\": " << temp << ", \"x\": " << x; 
-        gFile << ", \"y\": " << y;
-        gFile << "</P></DevI>" << std::endl;
+        gFile << "\" type=\"fixedNode\" P=\"{";
+        gFile << temp << "," << x << "," << y;
+        gFile << "}\"/>" << std::endl;
+        
         
         if(dummy && (x < (xMax-1) || y < (yMax-1)))
         {
@@ -76,14 +76,13 @@ void writeDev(uint32_t x, uint32_t y, std::vector<fixedNode>& fNodes,
         }
     } else {
         gFile << "      <DevI id=\"c_" << x << "_" << y;
-        gFile << "\" type=\"cell\">";
-        gFile << "<P>\"x\": " << x << ", \"y\": " << y;
+        gFile << "\" type=\"cell\" P=\"{";
+        gFile << x << "," << y;
         if(minChg != "")
         {
-            gFile << ", \"minChg\": " << minChg;
+            gFile << "," << minChg;
         }
-        gFile << "</P></DevI>";
-        gFile << std::endl;
+        gFile << "}\"/>" << std::endl;
 
         if(y < yMax-1) //North connection
         {
