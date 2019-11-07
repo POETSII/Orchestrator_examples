@@ -18,28 +18,9 @@
     </Properties>
 
     <MessageTypes>
-      <MessageType id="heartbeat">
-      </MessageType>
+      <MessageType id="dummy"/> <!-- Used for __init dummy pins -->
       
-      <MessageType id="instr">
-        <Message>
-            <!-- 2nd FLIT -->
-            <Scalar type="uint32_t" name="threadID"/>
-            <Scalar type="uint32_t" name="cIDX"/>
-            <Scalar type="uint32_t" name="cycles"/>
-            <Scalar type="uint32_t" name="txCnt"/>
-            
-            <!-- 3rd FLIT -->
-            <Scalar type="uint32_t" name="supCnt"/>
-            <Scalar type="uint32_t" name="rxCnt"/>
-            <Scalar type="uint32_t" name="rxHanCnt"/>
-            <Scalar type="uint32_t" name="txHanCnt"/>
-            
-            <!-- 4th FLIT -->
-            <Scalar type="uint32_t" name="idleCnt"/>
-            <Scalar type="uint32_t" name="idleHanCnt"/>
-            <Scalar type="uint32_t" name="heartbeatIndex"/>
-        </Message>
+      <MessageType id="heartbeat">
       </MessageType>
 
       <MessageType id="update">
@@ -181,18 +162,8 @@
           }
         ]]></SharedCode>
 
-        <ReadyToSend><![CDATA[
-#ifdef __INSTRUMENTATION
-          if(deviceInstance->thread->pendCycles == 2)
-          {
-            // We need to send a cycles message
-            *readyToSend |= RTS_FLAG_instr;
-            deviceInstance->thread->pendCycles = 1;     // claim the cycles
-          }
-          else if((deviceState->fin == 1) ^ (deviceState->finSent==1))
-#else          
+        <ReadyToSend><![CDATA[  
           if((deviceState->fin == 1) ^ (deviceState->finSent==1))
-#endif
           {
             *readyToSend |= RTS_FLAG_finished;
           } else if(deviceState->updated) {
@@ -209,17 +180,16 @@
             {
               heartbeatIndex = 0;
               P_Msg_t hbMsg;
-
-              hbMsg.header.messageLenBytes = sizeof(P_Msg_Hdr_t); // HB is only a header.
-              hbMsg.header.destEdgeIndex = 0;
-              hbMsg.header.destPin = (deviceInstance->numInputs - 1); //HB is last pin
-              hbMsg.header.messageTag = 0; //HB is first declared message
-
-              for(unsigned int i = 0; i < deviceInstance->thread->numDevInsts; i++)    //Loop through the devices on this softswitch
-              {
-                hbMsg.header.destDeviceAddr = i;
-                softswitch_onReceive(deviceInstance->thread, &hbMsg);
-              }
+              P_Msg_Hdr_t* hdr = &(hbMsg.header);
+              
+              // Form the Pin Address
+              hdr->swAddr = ((P_ADDR_BROADCAST << P_SW_DEVICE_SHIFT) & P_SW_DEVICE_MASK);
+              hdr->pinAddr = (((deviceInstance->numInputs-1) << P_HD_TGTPIN_SHIFT)
+                                & P_HD_TGTPIN_MASK);     //HB is last pin
+              hdr->pinAddr |= ((0 << P_HD_DESTEDGEINDEX_SHIFT)
+                                & P_HD_DESTEDGEINDEX_MASK);     // Broadcast
+              
+              softswitch_onReceive(deviceInstance->thread, &hbMsg);                
             }
             else
             {
@@ -231,6 +201,15 @@
         ]]></OnCompute>
 
         <!-- Device State Handlers -->
+        <InputPin name="initDummy" messageTypeId="dummy">
+          <OnReceive><![CDATA[
+            // Dummy input pin to handle hacky __init stuff.
+    #ifdef VERBOSEDEBUG
+            handler_log(2,"P_INIT");
+    #endif
+          ]]></OnReceive>
+        </InputPin>
+        
         <InputPin name="north_in" messageTypeId="update">
           <OnReceive><![CDATA[
     #ifdef VERBOSEDEBUG
@@ -310,39 +289,6 @@
           ]]></OnSend>
         </OutputPin>
         
-        <!-- Quick & Dirty instrumentation -->
-        <OutputPin name="instr" messageTypeId="instr">
-          <OnSend><![CDATA[
-#ifdef __INSTRUMENTATION
-            uint32_t cycles = tinselCycleCount();
-            
-            message->threadID = tinselId();
-            message->cIDX = deviceInstance->thread->cycleIdx++;
-            message->cycles = cycles - deviceInstance->thread->lastCycles;
-            message->txCnt = deviceInstance->thread->txCount;
-            message->supCnt = deviceInstance->thread->superCount;
-            message->rxCnt = deviceInstance->thread->rxCount;
-            message->txHanCnt = deviceInstance->thread->txHandlerCount;
-            message->rxHanCnt = deviceInstance->thread->rxHandlerCount;
-            message->idleCnt = deviceInstance->thread->idleCount;
-            message->idleHanCnt = deviceInstance->thread->idleHandlerCount;
-            message->heartbeatIndex = heartbeatIndex; 
-            //static_cast<device_state_t*>(deviceInstance->thread->devInsts[0].state)->hc;
-            
-            
-            deviceInstance->thread->lastCycles = cycles;
-            deviceInstance->thread->pendCycles = 0;
-            deviceInstance->thread->txCount = 0;
-            deviceInstance->thread->superCount = 0;
-            deviceInstance->thread->rxCount = 0;
-            deviceInstance->thread->txHandlerCount = 0;
-            deviceInstance->thread->rxHandlerCount = 0;
-            deviceInstance->thread->idleCount = 0;
-            deviceInstance->thread->idleHandlerCount = 0;
-#endif            
-          ]]></OnSend>
-        </OutputPin>
-
         <!-- Experiment Termination Handlers -->
         <OutputPin name="finished" messageTypeId="finished">
           <OnSend><![CDATA[
@@ -389,6 +335,15 @@
             deviceInstance->thread->ctlEnd = 1;
           ]]></OnReceive>
         </InputPin>
+        
+        <OutputPin name="heart_out" messageTypeId="heartbeat">
+          <OnSend><![CDATA[   
+            // Hacky heartbeat output pin for self-connecting to avoid sanity checking.
+    #ifdef VERBOSEDEBUG
+              handler_log(2,"HB_out");
+    #endif
+          ]]></OnSend>
+        </OutputPin>
 
         <InputPin name="heart_in" messageTypeId="heartbeat">
           <OnReceive><![CDATA[
@@ -405,7 +360,7 @@
               }
             } else {
     #ifdef VERBOSEDEBUG
-              //handler_log(2,"HB_IGN");
+              //handler_log(1,"HB_IGN");
     #endif
             }
           ]]></OnReceive>
@@ -444,21 +399,29 @@
             //return 0;
           }
         ]]></ReadyToSend>
+        
+        <InputPin name="initDummy" messageTypeId="dummy">
+          <OnReceive><![CDATA[
+            // Dummy input pin to handle hacky __init stuff.
+    #ifdef VERBOSEDEBUG
+            handler_log(2,"P_INIT");
+    #endif
+          ]]></OnReceive>
+        </InputPin>
 
         <InputPin name="done" messageTypeId="exit">
           <OnReceive><![CDATA[
-          #ifdef USEDEBUG
-              handler_log(2,"CELL_EXIT");
-          #endif
+            handler_log(5,"CELL_EXIT");
+
             deviceInstance->thread->ctlEnd = 1;
           ]]></OnReceive>
         </InputPin>
         
         <OutputPin name="out" messageTypeId="update">
           <OnSend><![CDATA[
-            #ifdef VERBOSEDEBUG
-              handler_log(2,"F_OUT");
-            #endif
+    #ifdef VERBOSEDEBUG
+            handler_log(2,"F_OUT");
+    #endif
             message->t = deviceProperties->t;
             deviceState->updateCount++;
           ]]></OnSend>
@@ -536,79 +499,6 @@
           //DEBUG_PRINT("3x3, 9 cells");
 
         ]]></Code>
-
-        <!-- XSIZE_DEF, YSIZE_DEF, THREAD_DEF and NODE_DEF are replaced by the generator. -->
-        <!-- This is a complete hack and needs some thought in how to parameterise. -->
-        <InputPin name="instr" messageTypeId="instr">
-          <Properties>
-            <Scalar type="uint32_t" name="xSize" default="XSIZE_DEF"/>
-            <Scalar type="uint32_t" name="ySize" default="YSIZE_DEF"/>
-          </Properties>
-          <State>
-            <Array name="data" length="THREAD_DEF">
-              <Tuple name="data_t">
-                <Scalar type="double" name="time" default="0.0"/>
-                <Scalar type="uint64_t" name="sentCount" default="0"/>
-                <Scalar type="uint64_t" name="rxCount" default="0"/>
-              </Tuple>
-            </Array>
-          </State>
-          <OnReceive><![CDATA[
-#ifdef __INSTRUMENTATION
-            std::ofstream cFile;
-            std::ostringstream sst;
-            double deltaT;
-            
-            uint32_t tID = message->threadID;
-            
-            sst << "plate_" << sEdgeProperties->xSize << "x";
-            sst << sEdgeProperties->ySize << "_cycles_" << tID;
-            sst << ".csv";
-            
-            if(message->cIDX == 0)
-            {   // Overwrite the file.
-                cFile.open(sst.str(), std::ofstream::out);
-                deltaT = 0.0;
-                cFile << "ThreadID, cIDX, cycles, deltaT, T, onSend, sent, ";
-                cFile << "sent/s, sentCnt, supsent, onRX, rx/s, rxCnt, rx, ";
-                cFile << "onIdle, idle, hbIDX" << std::endl;
-            } 
-            else 
-            {   // Append the file.
-                cFile.open(sst.str(), std::ofstream::out | std::ofstream::app);
-                deltaT = static_cast<double>(message->cycles)/250000000;        // Convert cycles to seconds
-            }
-            sEdgeState->data_t[tID].time += deltaT;
-            sEdgeState->data_t[tID].sentCount += message->txCnt;
-            sEdgeState->data_t[tID].rxCount += message->rxCnt;
-            
-            cFile << message->threadID << ", " << message->cIDX << ", ";
-            cFile << message->cycles << ", " << deltaT << ", ";
-            cFile << sEdgeState->data_t[tID].time << ", ";
-            
-            cFile << message->txHanCnt << ", " << message->txCnt << ", ";
-            cFile << ((message->cIDX == 0)? 0.0 : (message->txCnt/deltaT));
-            cFile << ", ";
-            cFile << sEdgeState->data_t[tID].sentCount << ", ";
-            cFile << message->supCnt << ", ";
-            
-            cFile << message->rxCnt << ", ";
-            cFile << ((message->cIDX == 0)? 0.0 : (message->rxCnt/deltaT));
-            cFile << ", ";
-            cFile << sEdgeState->data_t[tID].rxCount << ", ";
-            
-            cFile << message->rxHanCnt << ", ";
-            
-            cFile << message->idleCnt << ", " << message->idleHanCnt << ", ";
-            
-            cFile << message->heartbeatIndex;
-            
-            cFile << std::endl;
-            cFile.close();
-#endif
-          ]]></OnReceive>
-        </InputPin>
-
 
         <!-- XSIZE_DEF, YSIZE_DEF and NODE_DEF are replaced by the generator. -->
         <!-- This is a complete hack and needs some thought in how to parameterise. -->

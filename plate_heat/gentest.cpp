@@ -121,15 +121,23 @@ void writeDev(uint32_t x, uint32_t y, std::vector<fixedNode>& fNodes,
             eFile << std::endl;
         }
         
-        eFile << "      <EdgeI path=\":instr-c_";
-        eFile << x << "_" << y;
-        eFile << ":instr\"/>" << std::endl;
-        eFile << std::endl;
+        //eFile << "      <EdgeI path=\":instr-c_";
+        //eFile << x << "_" << y;
+        //eFile << ":instr\"/>" << std::endl;
+        //eFile << std::endl;
     }
 
+    // Finished 
     eFile << "      <EdgeI path=\":finished-c_";
     eFile << x << "_" << y;
     eFile << ":finished\"/>" << std::endl;
+    
+    if(!isFixed)
+    {
+        // Heartbeat Hack
+        eFile << "      <EdgeI path=\"c_" << x << "_" << y << ":heart_in-";
+        eFile << "c_" << x << "_" << y << ":heart_out\"/>" << std::endl;
+    }
     eFile << std::endl;
 }
 
@@ -280,7 +288,7 @@ int main(int argc, const char * argv[]) {
                            {(xMax - 1), 0, -fixTmp},
                            {(xMax - 1), (yMax - 1), fixTmp}
                          };
-        
+                break;
       case 0:
       default:  fNodes = {{0, 0, fixTmp}, {(xMax - 1), (yMax - 1), -fixTmp}};
     }
