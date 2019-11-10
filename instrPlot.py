@@ -8,13 +8,10 @@ import matplotlib.pyplot as plt
 from scipy import interpolate
 
 
-size = 400
-fpattern = 'cycles_*.csv'
-
-totaly = numpy.zeros((size))
-xnew = numpy.arange(0, size, 1)
+size = 0
 threads = []
 
+fpattern = 'instrumentation_thread_*.csv'
 
 files = glob.glob(fpattern)
 threadCount = len(files)
@@ -23,23 +20,33 @@ for fname in files:
     thread = []
     
     #original X vals
-    thread.append(numpy.loadtxt(open(fname, "rb"), delimiter=",", skiprows=1, usecols=(4)))
-
+    thread.append(numpy.loadtxt(open(fname, "rb"), delimiter=",", skiprows=1, usecols=(2)))
+    
     #original Y vals
-    thread.append(numpy.loadtxt(open(fname, "rb"), delimiter=",", skiprows=1, usecols=(7)))
+    thread.append(numpy.loadtxt(open(fname, "rb"), delimiter=",", skiprows=1, usecols=(17)))
+    
+    if (int(thread[0][-1]) < size) or (size == 0):
+        size = int(thread[0][-1])
+    
+    #Append to the system data
+    threads.append(thread)
 
+
+totaly = numpy.zeros((size))
+xnew = numpy.arange(0, size, 1)
+
+for thread in threads:
     #Interpolate
     fcy0 = interpolate.interp1d(thread[0],thread[1])
-
+    
+    xnew = numpy.arange(0, size, 1)
+    
     #Save the output
     thread.append(fcy0(xnew))
     
     #Add to the total
     totaly += thread[2]
-    
-    #Append to the system data
-    threads.append(thread)
-    
+
 totaly = totaly/100000
 
 
@@ -55,10 +62,10 @@ plt.figure(figsize=(18,10))
 plt.plot(xnew, totaly, '-')
 #plt.plot([307, 307], [0, 11], 'k--')
 #plt.text(310, 6.5, "Completion at\n307 seconds", fontsize=18)
-plt.title('Heated Plate, Alternative Softswitch', fontsize=25)
+plt.title('Heated Plate, Sum of Thread Messsage Send Rate', fontsize=25)
 plt.xlabel('Wallclock time (s)', fontsize=20)
 plt.ylabel(r'Message send rate ($10^6$/s)', fontsize=20)
-plt.axis([0,size,0,11])
+#plt.axis([0,size,0,11])
 plt.grid(linestyle='-', linewidth='1', which='major')
 plt.savefig('msgs.png')
 
@@ -70,8 +77,8 @@ plt.figure(figsize=(18,10))
 for i in range(threadCount):
     plt.plot(xnew, threads[i][2], '-', label='Thread '+str(i))
 
-plt.axis([0,size,0,35000])
-plt.title('Heated Plate, Alternative Softswitch', fontsize=25)
+#plt.axis([0,size,0,35000])
+plt.title('Heated Plate, All Threads', fontsize=25)
 plt.ylabel('Message send rate', fontsize=20)
 plt.xlabel('Wallclock time (s)', fontsize=20)
 plt.grid(linestyle='-', linewidth='1', which='major')
@@ -86,12 +93,13 @@ if threadCount>10:
     plt.plot(xnew, threads[int(threadCount/4)][2], '-', label='Thread '+str(int(threadCount/4)))
     plt.plot(xnew, threads[int((threadCount/4)*3)][2], '-', label='Thread '+str(int((threadCount/4)*3)))
 
-plt.plot(xnew, threads[threadCount-1][2], '-', label='Thread '+str(threadCount-1))
+plt.plot(xnew, threads[threadCount-2][2], '-', label='Thread '+str(threadCount-1))
 
 
-plt.title('Heated Plate, Alternative Softswitch', fontsize=25)
+plt.title('Heated Plate, Selected Threads', fontsize=25)
 plt.ylabel('Message send rate', fontsize=20)
 plt.xlabel('Wallclock time (s)', fontsize=20)
+plt.legend()
 plt.grid(linestyle='-', linewidth='1', which='major')
 plt.savefig('msgs_threads.png')
 
