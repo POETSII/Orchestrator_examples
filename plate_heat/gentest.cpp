@@ -150,6 +150,8 @@ int main(int argc, const char * argv[]) {
     std::string minChg;
     float fixTmp;
     int fixPat;
+    
+    int hbOver, idleOver;
 
     std::string gType;
     std::string gTypeFile;
@@ -183,6 +185,8 @@ int main(int argc, const char * argv[]) {
     args::ValueFlag<std::string> oAppend(optional, "string", "String to append to the generated filename before .xml, default=\"\"", {'o'});
     args::ValueFlag<int> sq(optional, "int", "Set whether devices are generated linearly (0) or in blocks (1 = thread-level, 2 = box-level), default = 0", {'s'});
     args::ValueFlag<int> tMC(optional, "int", "Set the maximum number of threads (used for Supervisor Instrumentation Array sizing). Default = 49152", {"ThreadMaxCount"});
+    args::ValueFlag<int> idleIn(optional, "int", "Set the OnIdle count required to trigger a HB, default >=1000 (scales with problem size)", {'i'});
+    args::ValueFlag<int> hbIn(optional, "int", "Set the HB count required to trigger a finish message, default = 10", {'z', "hb"});
 
 
     try
@@ -245,6 +249,7 @@ int main(int argc, const char * argv[]) {
         }
     }
     
+    //String to append to output filename
     if(oAppend)
     {
         gAppend = args::get(oAppend);
@@ -252,7 +257,7 @@ int main(int argc, const char * argv[]) {
         gAppend = "";
     }
     
-    
+    //Define the crude mapping
     if(sq)
     {
         squares = args::get(sq);
@@ -278,6 +283,22 @@ int main(int argc, const char * argv[]) {
         threadMaxCount = args::get(tMC);
     } else {
         threadMaxCount = 49152;
+    }
+    
+    
+    // Setup heartbeat override
+    if(idleIn)
+    {
+        idleOver = args::get(idleIn);
+    } else {
+        idleOver = 0;
+    }
+    
+    if(hbIn)
+    {
+        hbOver = args::get(hbIn);
+    } else {
+        hbOver = 0;
     }
 
     nodeCount = xMax * yMax;
@@ -341,6 +362,16 @@ int main(int argc, const char * argv[]) {
         std::cout << "\t>1000000" << std::endl;
         hbIdxScale = 2000;
         hcMaxScale = 10;
+    }
+    
+    if(hbOver)
+    {
+        hbIdxScale = hbOver;
+    }
+    
+    if(idleOver)
+    {
+        hcMaxScale = idleOver;
     }
 
     //Copy graph type into graph instance.
