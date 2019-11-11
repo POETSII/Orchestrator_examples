@@ -364,14 +364,14 @@ int main(int argc, const char * argv[]) {
         hcMaxScale = 10;
     }
     
-    if(hbOver)
+    if(hbOver > 0)
     {
-        hbIdxScale = hbOver;
+        hcMaxScale = hbOver;
     }
     
-    if(idleOver)
+    if(idleOver > 0)
     {
-        hcMaxScale = idleOver;
+        hbIdxScale = idleOver;
     }
 
     //Copy graph type into graph instance.
