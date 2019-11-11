@@ -71,7 +71,8 @@ void writeDev(uint32_t x, uint32_t y, std::vector<fixedNode>& fNodes,
         {
             // write a dummy padding  device 
             gFile << "      <DevI id=\"dummy_" << x << "_" << y; 
-            gFile << "\" type=\"cell\"/>";
+            gFile << "\" type=\"cell\">";
+            gFile << "<P>\"dummy\": 1" << "</P></DevI>";
             gFile << std::endl;
         }
     } else {

@@ -57,6 +57,7 @@
           <Scalar type="uint16_t" name="hcMax" default="HCMAX_DEF"/>
           <Scalar type="uint32_t" name="x"/>
           <Scalar type="uint32_t" name="y"/>
+          <Scalar type="uint32_t" name="dummy" default="0"/>
         </Properties>
 
         <State>
