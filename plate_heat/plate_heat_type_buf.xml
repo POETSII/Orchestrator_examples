@@ -154,7 +154,6 @@
               deviceState->hc = 0;
               deviceState->fin = 0;
               deviceState->t = tCalc;
-              deviceState->active = 1;
               deviceState->updated = 1;
               heartbeatIndex = 0;
             }
@@ -175,8 +174,12 @@
         <OnCompute><![CDATA[
           //TODO: Write heartbeat code
           
-          updateTemp(deviceState, deviceProperties);
-          if((deviceState->updated > 0) && (deviceProperties->dummy == 0)) {
+          if(deviceState->active == 1)
+          {
+            updateTemp(deviceState, deviceProperties);
+          }
+          
+          if((deviceState->updated > 0)) {  // && (deviceProperties->dummy == 0)
             return(1);
           }
           
@@ -225,6 +228,7 @@
             if(deviceState->nNorth == 0)
             {
               deviceState->nNorth = 1;
+              deviceState->active = 1;
               deviceState->activeCount++;
             }
             
@@ -242,6 +246,7 @@
             if(deviceState->nEast == 0)
             {
               deviceState->nEast = 1;
+              deviceState->active = 1;
               deviceState->activeCount++;
             }
             
@@ -259,6 +264,7 @@
             if(deviceState->nSouth == 0)
             {
               deviceState->nSouth = 1;
+              deviceState->active = 1;
               deviceState->activeCount++;
             }
             
@@ -276,6 +282,7 @@
             if(deviceState->nWest == 0)
             {
               deviceState->nWest = 1;
+              deviceState->active = 1;
               deviceState->activeCount++;
             }
             
