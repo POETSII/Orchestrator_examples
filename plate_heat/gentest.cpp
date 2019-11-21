@@ -144,7 +144,7 @@ void writeDev(uint32_t x, uint32_t y, std::vector<fixedNode>& fNodes,
 
 
 int main(int argc, const char * argv[]) {
-    uint32_t squares;
+    uint32_t squares, squaresDimension;
     uint32_t x, y, xStart, yStart, threadMaxCount;
     std::vector<fixedNode> fNodes;
     
@@ -184,7 +184,8 @@ int main(int argc, const char * argv[]) {
     args::ValueFlag<int> fNo(optional, "int", "Fixed-node pattern. (0) 2 opposite corners, (1) 4 opposite corners. Default=0", {'f'});
     args::ValueFlag<std::string> typF(optional, "filename", "Filename of the Type file, default=plate_heat_type.xml", {'x', "type"});
     args::ValueFlag<std::string> oAppend(optional, "string", "String to append to the generated filename before .xml, default=\"\"", {'o'});
-    args::ValueFlag<int> sq(optional, "int", "Set whether devices are generated linearly (0) or in blocks (1 = thread-level, 2 = box-level), default = 0", {'s'});
+    args::ValueFlag<int> sq(optional, "int", "Squares: Set whether devices are generated linearly (0) or in blocks (1 = thread-level, 2 = box-level), default = 0", {'s'});
+    args::ValueFlag<int> sd(optional, "int", "Square Dimension - used to set the x & y dimension of the square size, default = 32 (e.g. 1024 devices)", {'u', "sd"});
     args::ValueFlag<int> tMC(optional, "int", "Set the maximum number of threads (used for Supervisor Instrumentation Array sizing). Default = 49152", {"ThreadMaxCount"});
     args::ValueFlag<int> idleIn(optional, "int", "Set the OnIdle count required to trigger a HB, default >=1000 (scales with problem size)", {'i'});
     args::ValueFlag<int> hbIn(optional, "int", "Set the HB count required to trigger a finish message, default = 10", {'z', "hb"});
@@ -276,6 +277,13 @@ int main(int argc, const char * argv[]) {
     {
       std::cout << "Error: s2 can only be used when x<=6144" << std::endl;
       return 1;
+    }
+    
+    if(sd)
+    {
+        squaresDimension = args::get(sd);
+    } else {
+        squaresDimension = 32;
     }
     
     //Set the thread Max Count
@@ -499,18 +507,18 @@ int main(int argc, const char * argv[]) {
                       {
                         
                         // Generate a core-full, pad everything
-                        for(unsigned xThread = 0; xThread < 4; xThread++,xCoreStart+=32)
+                        for(unsigned xThread = 0; xThread < 4; xThread++,xCoreStart+=squaresDimension)
                         { 
                           yStart = yCoreStart;
                           std::cout << "\t\txThread:" << xThread << "\txStart:" << xCoreStart << std::endl;
-                          for(unsigned yThread = 0; yThread < 4; yThread++,yStart+=32)
+                          for(unsigned yThread = 0; yThread < 4; yThread++,yStart+=squaresDimension)
                           {
                             std::cout << "\t\t\tyThread:" << yThread << "\tyStart:" << yStart << std::endl;
                         
                             // Generate a thread-full, pad everything 
-                            for(x=xCoreStart; x<(xCoreStart+32); x++)
+                            for(x=xCoreStart; x<(xCoreStart+squaresDimension); x++)
                             {
-                              for(y=yStart; y<(yStart+32); y++)
+                              for(y=yStart; y<(yStart+squaresDimension); y++)
                               {                   
                                 if(x >= xMax || y >= yMax)
                                 {
@@ -541,13 +549,13 @@ int main(int argc, const char * argv[]) {
     } else if(squares == 1) {
         /* Generate devices in thread-size chunks (with dummy devices).
          */ 
-        for(xStart = 0; xStart < xMax; xStart+=32)
+        for(xStart = 0; xStart < xMax; xStart+=squaresDimension)
         {    
-            for(yStart = 0; yStart < yMax; yStart+=32)
+            for(yStart = 0; yStart < yMax; yStart+=squaresDimension)
             {
-                for(x=xStart; x<(xStart+32); x++)
+                for(x=xStart; x<(xStart+squaresDimension); x++)
                 {
-                    for(y=yStart; y<(yStart+32); y++)
+                    for(y=yStart; y<(yStart+squaresDimension); y++)
                     {
                         if(x >= xMax && y >= yMax)
                         {
