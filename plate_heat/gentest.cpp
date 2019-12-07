@@ -74,6 +74,11 @@ void writeDev(uint32_t x, uint32_t y, std::vector<fixedNode>& fNodes,
             gFile << "\" type=\"cell\">";
             gFile << "<P>\"dummy\": 1" << "</P></DevI>";
             gFile << std::endl;
+
+            // Heartbeat Hack
+            eFile << "      <EdgeI path=\"dummy_" << x << "_" << y << ":heart_in-";
+            eFile << "dummy_" << x << "_" << y << ":heart_out\"/>" << std::endl;
+
         }
     } else {
         gFile << "      <DevI id=\"c_" << x << "_" << y;
