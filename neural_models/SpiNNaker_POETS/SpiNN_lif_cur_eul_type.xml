@@ -1,0 +1,528 @@
+  <GraphType id="SpiNN_lif_cur_eul">
+
+    <SharedCode><![CDATA[
+    #include "tinsel.h"
+    ]]></SharedCode>
+
+    <Properties>
+      <Scalar type="uint32_t" name="endTime" default="1000"/>         <!-- Number of ticks in the simulation -->
+      <Scalar type="uint32_t" name="clocksPerTick" default="234375"/> <!-- Clock scaling factor -->
+      <Scalar type="uint32_t" name="STDPWindowSize" default="32"/>    <!-- Ticks within STDP learning window -->
+      <Scalar type="uint8_t" name="enableSTDP" default="0"/>
+      <Scalar type="int8_t" name="logTicksPerSec" default="10"/>      <!-- state update time scaling factor -->
+    </Properties>
+
+    <MessageTypes>
+
+      <MessageType id="__init__">
+      </MessageType>
+
+      <MessageType id="spike">
+        <Message>
+          <Scalar type="uint32_t" name="srcAddr"/>
+	  <Scalar type="uint32_t" name="tick"/>
+        </Message>
+      </MessageType>
+
+    </MessageTypes>
+
+    <DeviceTypes>
+      <DeviceType id="LIFNeuron">
+        <!-- This is an LIF-type neuron with support for STDP -->
+        <Properties>
+          <Scalar type="uint32_t" name="addr"/>                           <!-- Absolute neuron ID -->
+          <Scalar type="int32_t" name="theta" default="-51200"/>          <!-- Firing threshold (1024*mV)-->
+          <Scalar type="int32_t" name="V_r" default="-66560"/>            <!-- Reset voltage (1024*mV)-->
+	  <Scalar type="int32_t" name="V_s" default="-66560"/>            <!-- Rest voltage -->
+          <Scalar type="uint32_t" name="omega" default="50"/>             <!-- LIF characteristic frequency (1/tau in units of Hz) -->
+	  <Scalar type="uint32_t" name="tauRefrac" default="0xE0000000"/> <!-- Refractory period (tick bitmask) -->
+	  <Scalar type="uint8_t" name="record" default="0"/>              <!-- Record neuron (send data to Supervisor -->
+        </Properties>
+
+        <State>
+          <Scalar type="uint8_t" name="phi" default="0"/>              <!-- Current circular buffer position -->
+	  <Scalar type="uint32_t" name="startClock" default="0"/>      <!-- tinsel clock time when the simulation started -->
+          <Scalar type="uint32_t" name="tick" default="0"/>            <!-- Time step we are on -->
+          <Scalar type="uint32_t" name="spikeTimes" default="0"/>      <!-- STDP fine timestamp -->
+          <Scalar type="uint32_t" name="lastSpikeTime" default="0"/>   <!-- STDP coarse timestamp -->
+          <Scalar type="int32_t" name="V" default="-66560"/>           <!-- Membrane voltage (1024*mV)-->
+          <Array  name="IR" length="16" type="int32_t"/>               <!-- Current injection circular buffer (1024*mV) -->
+        </State>
+
+        <SharedCode><![CDATA[
+          const uint32_t SPIKENOW = 0x10000000;
+          const uint32_t SPIKELAST = 0x1;
+          const int32_t IRMAX = 1073741824;
+          const int32_t IRMIN = -1073741824;
+	  const uint8_t SPIKEBINS = 0xF;
+        
+// updateSynapse contains the synaptic update 
+inline void updateSynapse(const global_props_t* graphProperties, const devtyp_LIFNeuron_props_t* deviceProperties, devtyp_LIFNeuron_state_t* deviceState, const devtyp_LIFNeuron_InPin_Dendrite_props_t* edgeProperties, devtyp_LIFNeuron_InPin_Dendrite_state_t* edgeState)
+{
+       #ifdef USEDEBUG
+          handler_log(2,"Spike Received");
+       #endif
+       if (graphProperties->enableSTDP)
+       {
+	  // STDP equations
+       }
+       edgeState->aPTimes >>= (deviceState->tick-edgeState->lastAPTime);
+       edgeState->aPTimes |= SPIKENOW;
+       edgeState->lastAPTime = deviceState->tick;
+       uint8_t binIdx = (deviceState->phi+edgeProperties->delta) & SPIKEBINS; // find current bin
+       // update current, saturating as necessary
+       deviceState->IR[binIdx] += edgeState->IR_syn;
+       if (deviceState->IR[binIdx] > IRMAX)
+          deviceState->IR[binIdx] = IRMAX;
+       if (deviceState->IR[binIdx] < IRMIN)
+	  deviceState->IR[binIdx] = IRMIN;
+}
+
+// updateNeuron contains the state update - this can be different for different models and
+// ODE solvers; here is the maximally-naive Euler model LIF with no attempt to optimise
+// fixed-point precision.
+void updateNeuron(const global_props_t* graphProperties, const devtyp_LIFNeuron_props_t* deviceProperties, devtyp_LIFNeuron_state_t* deviceState)
+{
+     #ifdef VERBOSEDEBUG
+        handler_log(2,"Timer Tick");
+     #endif
+     // one last spike at the end to say we're done.	
+     if (deviceState->tick > graphProperties->endTime)
+     {
+        deviceState->V = deviceProperties->theta;
+        return;
+     }
+     // only compute state update if outside the refractory period	
+     if (!(((deviceState->spikeTimes) >> (deviceState->tick-deviceState->lastSpikeTime)) & deviceProperties->tauRefrac)) 
+        deviceState->V += ((deviceProperties->V_s - deviceState->V + deviceState->IR[deviceState->phi]) >> graphProperties->logTicksPerSec) * deviceProperties->omega;
+     if (!(deviceState->spikeTimes & SPIKELAST))
+     {
+        deviceState->spikeTimes >>= 1;
+	deviceState->lastSpikeTime = deviceState->tick;
+     }
+     // but always reset the current buffer state and position	
+     deviceState->IR[deviceState->phi] = 0;	
+     ++deviceState->phi &= SPIKEBINS;
+}
+
+// resetNeuron contains the reset of neuron state and spike recording when a neuron spikes.
+// This can be different for different models/solvers, just like updateNeuron. For the
+// simple LIF neuron we are just setting voltage to reset value.
+inline void resetNeuron(const global_props_t* graphProperties, const devtyp_LIFNeuron_props_t* deviceProperties, devtyp_LIFNeuron_state_t* deviceState)
+{
+     #ifdef USEDEBUG
+        handler_log(2,"Spike Sent");
+     #endif
+     deviceState->V = deviceProperties->V_r;
+     if (deviceState->tick > deviceState->lastSpikeTime)
+     {
+        deviceState->spikeTimes >>= (deviceState->tick-deviceState->lastSpikeTime);
+	deviceState->lastSpikeTime = deviceState->tick;
+     }
+     deviceState->spikeTimes |= SPIKENOW;     
+}
+
+void checkTimer(const global_props_t* graphProperties, const devtyp_LIFNeuron_props_t* deviceProperties, devtyp_LIFNeuron_state_t* deviceState)
+{
+       if (deviceState->tick > graphProperties->endTime) return; // end of simulation. Don't update.
+       if (tinselCycleCount() - deviceState->startClock >= graphProperties->clocksPerTick) // one more tick?
+       {
+          // make sure we haven't skipped an entire period
+          // taking cycle count again here strictly speaking will give a different relative
+	  // difference than the previous check, but if in this short of an interval the
+	  // clock has already gone to the next tick, we're more or less dead anyway.
+ 	  if (tinselCycleCount() - (deviceState->startClock += graphProperties->clocksPerTick) >= graphProperties->clocksPerTick)
+	  {
+	     // if we did, abandon the simulation by going to the end tick
+             handler_log(1,"Error: Unable to update state within the timer interval");
+	     deviceState->tick = graphProperties->endTime+1;
+          }
+	  else ++deviceState->tick;
+          if (deviceState->V >= deviceProperties->theta)
+	     handler_log(1,"Warning: could not send before timer interval expired. A spike may have been lost");
+	  updateNeuron(graphProperties, deviceProperties, deviceState);  
+       }
+       return;
+}
+	  
+        ]]></SharedCode>
+
+        <ReadyToSend><![CDATA[
+       if (deviceState->V < deviceProperties->theta)
+       {
+          *readyToSend = 0;
+	  return 0;
+       }
+       if (deviceState->tick <= graphProperties->endTime) *readyToSend |= RTS_FLAG_Axon;
+       if (deviceProperties->record) *readyToSend |= RTS_FLAG_Axon_Sup;
+       return 1;
+        ]]></ReadyToSend>
+
+        <OnCompute><![CDATA[
+       checkTimer(graphProperties, deviceProperties, deviceState);
+       return 1;
+        ]]></OnCompute>
+
+        <!-- Device State Handlers -->
+
+	<!-- May need an __init__ pin? -->
+
+        <InputPin name="__init__" messageTypeId="__init__">
+          <OnReceive><![CDATA[
+	    deviceState->startClock = tinselCycleCount();
+            #ifdef VERBOSEDEBUG
+              handler_log(2,"CELL_BEGIN");
+            #endif
+            // deviceInstance->thread->ctlEnd = 0;
+          ]]></OnReceive>
+        </InputPin>
+	
+        <InputPin name="Dendrite" messageTypeId="spike">
+	  <Properties>
+            <Scalar type="uint8_t" name="delta"/>                           <!-- Time delay (ticks) -->
+            <Scalar type="uint32_t" name="omegaPot" default="200"/>         <!-- Potentiating weight decay frequency (Hz) -->
+            <Scalar type="uint32_t" name="omegaDep" default="200"/>         <!-- Depressing weight decay frequency (Hz) -->
+	    <Scalar type="int32_t" name="APot" default="200"/>              <!-- Potentiating increment (1024*mV) -->
+            <Scalar type="int32_t" name="ADep" default="200"/>              <!-- Depressing decrement (1024*mV) -->
+          </Properties>
+
+          <State>
+            <Scalar type="int32_t" name="IR_syn" default="204800"/>      <!-- Synapse weight (1024*mV) -->
+            <Scalar type="uint32_t" name="aPTimes" default="0"/>         <!-- Presynaptic fine timestep -->
+            <Scalar type="uint32_t" name="lastAPTime" default="0"/>      <!-- Presynaptic coarse time step -->
+          </State>
+          <OnReceive><![CDATA[
+       checkTimer(graphProperties, deviceProperties, deviceState); // check timer first to put currents in the closest bin
+       updateSynapse(graphProperties, deviceProperties, deviceState, edgeProperties, edgeState);
+       return 0;
+          ]]></OnReceive>
+        </InputPin>
+
+        <OutputPin name="Axon" messageTypeId="spike">
+          <OnSend><![CDATA[
+       resetNeuron(graphProperties, deviceProperties, deviceState);
+       message->srcAddr = deviceProperties->addr;
+       message->tick = deviceState->tick;
+       // inexorably a packet will be sent now, so we can update the
+       // state of the timer if necessary
+       checkTimer(graphProperties, deviceProperties, deviceState);
+       return 0;
+          ]]></OnSend>
+        </OutputPin>
+        <OutputPin name="Axon_Sup" messageTypeId="spike">
+          <OnSend><![CDATA[
+       if (deviceState->tick > graphProperties->endTime) resetNeuron(graphProperties, deviceProperties, deviceState);
+       message->srcAddr = deviceProperties->addr;
+       message->tick = deviceState->tick;
+       checkTimer(graphProperties, deviceProperties, deviceState);
+       return 0;
+          ]]></OnSend>
+        </OutputPin>
+      </DeviceType>
+
+      <DeviceType id="SpikeSource">
+        <!-- This is a spike source (for the moment just a type of LIF neuron) -->
+        <Properties>
+          <Scalar type="uint32_t" name="addr"/>                           <!-- Absolute neuron ID -->
+          <Scalar type="int32_t" name="theta" default="-51200"/>          <!-- Firing threshold (1024*mV)-->
+          <Scalar type="int32_t" name="V_r" default="-66560"/>            <!-- Reset voltage (1024*mV)-->
+	  <Scalar type="int32_t" name="V_s" default="-66560"/>            <!-- Rest voltage -->
+          <Scalar type="uint32_t" name="omega" default="50"/>             <!-- LIF characteristic frequency (1/tau in units of Hz) -->
+	  <Scalar type="uint32_t" name="tauRefrac" default="0xE0000000"/> <!-- Refractory period (tick bitmask) -->
+	  <Scalar type="uint8_t" name="record" default="0"/>              <!-- Record neuron (send data to Supervisor -->
+        </Properties>
+
+        <State>
+          <Scalar type="uint8_t" name="phi" default="0"/>              <!-- Current circular buffer position -->
+	  <Scalar type="uint32_t" name="startClock" default="0"/>      <!-- tinsel clock time when the simulation started -->
+          <Scalar type="uint32_t" name="tick" default="0"/>            <!-- Time step we are on -->
+          <Scalar type="uint32_t" name="spikeTimes" default="0"/>      <!-- STDP fine timestamp -->
+          <Scalar type="uint32_t" name="lastSpikeTime" default="0"/>   <!-- STDP coarse timestamp -->
+          <Scalar type="int32_t" name="V" default="-40960"/>           <!-- Membrane voltage (1024*mV)-->
+          <Array  name="IR" length="16" type="int32_t"/>                <!-- Current injection circular buffer (1024*mV) -->
+        </State>
+
+        <SharedCode><![CDATA[
+          const uint32_t SPIKENOW = 0x10000000;
+          const uint32_t SPIKELAST = 0x1;
+          const int32_t IRMAX = 1073741824;
+          const int32_t IRMIN = -1073741824;
+	  const uint8_t SPIKEBINS = 0xF;
+        
+// updateSynapse contains the synaptic update 
+inline void updateSynapse(const global_props_t* graphProperties, const devtyp_SpikeSource_props_t* deviceProperties, devtyp_SpikeSource_state_t* deviceState, const devtyp_SpikeSource_InPin_Dendrite_props_t* edgeProperties, devtyp_SpikeSource_InPin_Dendrite_state_t* edgeState)
+{
+       #ifdef USEDEBUG
+          handler_log(2,"Spike Received");
+       #endif
+       if (graphProperties->enableSTDP)
+       {
+	  // STDP equations
+       }
+       edgeState->aPTimes >>= (deviceState->tick-edgeState->lastAPTime);
+       edgeState->aPTimes |= SPIKENOW;
+       edgeState->lastAPTime = deviceState->tick;
+       uint8_t binIdx = (deviceState->phi+edgeProperties->delta) & SPIKEBINS;
+       // update current, saturating as necessary
+       deviceState->IR[binIdx] += edgeState->IR_syn;
+       if (deviceState->IR[binIdx] > IRMAX)
+          deviceState->IR[binIdx] = IRMAX;
+       if (deviceState->IR[binIdx] < IRMIN)
+	  deviceState->IR[binIdx] = IRMIN;         
+}
+
+// updateNeuron contains the state update - this can be different for different models and
+// ODE solvers; here is the maximally-naive Euler model LIF with no attempt to optimise
+// fixed-point precision.
+void updateNeuron(const global_props_t* graphProperties, const devtyp_SpikeSource_props_t* deviceProperties, devtyp_SpikeSource_state_t* deviceState)
+{
+     #ifdef VERBOSEDEBUG
+        handler_log(2,"Timer Tick");
+     #endif
+     if (deviceState->tick > graphProperties->endTime)
+     {
+        deviceState->V = deviceProperties->theta;
+        return;
+     }
+     // only compute state update if outside the refractory period	
+     if (!(((deviceState->spikeTimes) >> (deviceState->tick-deviceState->lastSpikeTime)) & deviceProperties->tauRefrac)) 
+        deviceState->V += ((deviceProperties->V_s - deviceState->V + deviceState->IR[deviceState->phi]) >> graphProperties->logTicksPerSec) * deviceProperties->omega;
+     if (!(deviceState->spikeTimes & SPIKELAST))
+     {
+        deviceState->spikeTimes >>= 1;
+	deviceState->lastSpikeTime = deviceState->tick;
+     }
+     // but always reset the current buffer state and position	
+     deviceState->IR[deviceState->phi] = 0;	
+     ++deviceState->phi &= SPIKEBINS;
+}
+
+// resetNeuron contains the reset of neuron state and spike recording when a neuron spikes.
+// This can be different for different models/solvers, just like updateNeuron. For the
+// simple LIF neuron we are just setting voltage to reset value.
+inline void resetNeuron(const global_props_t* graphProperties, const devtyp_SpikeSource_props_t* deviceProperties, devtyp_SpikeSource_state_t* deviceState)
+{
+     #ifdef USEDEBUG
+        handler_log(2,"Spike Sent");
+     #endif
+     deviceState->V = deviceProperties->V_r;
+     if (deviceState->tick > deviceState->lastSpikeTime)
+     {
+        deviceState->spikeTimes >>= (deviceState->tick-deviceState->lastSpikeTime);
+	deviceState->lastSpikeTime = deviceState->tick;
+     }
+     deviceState->spikeTimes |= SPIKENOW;     
+}
+
+void checkTimer(const global_props_t* graphProperties, const devtyp_SpikeSource_props_t* deviceProperties, devtyp_SpikeSource_state_t* deviceState)
+{
+       if (deviceState->tick > graphProperties->endTime) return; // end of simulation. Don't update.
+       if (tinselCycleCount() - deviceState->startClock >= graphProperties->clocksPerTick) // one more tick?
+       {
+          // make sure we haven't skipped an entire period
+          // taking cycle count again here strictly speaking will give a different relative
+	  // difference than the previous check, but if in this short of an interval the
+	  // clock has already gone to the next tick, we're more or less dead anyway.
+ 	  if (tinselCycleCount() - (deviceState->startClock += graphProperties->clocksPerTick) >= graphProperties->clocksPerTick)
+	  {
+	     // if we did, abandon the simulation by going to the end tick
+             handler_log(1,"Error: Unable to update state within the timer interval");
+	     deviceState->tick = graphProperties->endTime+1;
+          }
+	  else ++deviceState->tick;
+          if (deviceState->V >= deviceProperties->theta)
+	     handler_log(1,"Warning: could not send before timer interval expired. A spike may have been lost");
+	  updateNeuron(graphProperties, deviceProperties, deviceState);  
+       }
+       return;
+}
+	  
+        ]]></SharedCode>
+
+        <ReadyToSend><![CDATA[
+       if (deviceState->V < deviceProperties->theta)
+       {
+          *readyToSend = 0;
+	  return 0;
+       }
+       if (deviceState->tick <= graphProperties->endTime) *readyToSend |= RTS_FLAG_Axon;
+       if (deviceProperties->record) *readyToSend |= RTS_FLAG_Axon_Sup;
+       return 1;
+        ]]></ReadyToSend>
+
+        <OnCompute><![CDATA[
+       checkTimer(graphProperties, deviceProperties, deviceState);
+       return 1;
+        ]]></OnCompute>
+
+        <!-- Device State Handlers -->
+
+	<!-- May need an __init__ pin? -->
+
+        <InputPin name="__init__" messageTypeId="__init__">
+          <OnReceive><![CDATA[
+	    deviceState->startClock = tinselCycleCount();
+            #ifdef VERBOSEDEBUG
+              handler_log(2,"CELL_BEGIN");
+            #endif
+            // deviceInstance->thread->ctlEnd = 0;
+          ]]></OnReceive>
+        </InputPin>
+	
+        <InputPin name="Dendrite" messageTypeId="spike">
+	  <Properties>
+            <Scalar type="uint8_t" name="delta"/>                           <!-- Time delay (ticks) -->
+            <Scalar type="uint32_t" name="omegaPot" default="200"/>         <!-- Potentiating weight decay frequency (Hz) -->
+            <Scalar type="uint32_t" name="omegaDep" default="200"/>         <!-- Depressing weight decay frequency (Hz) -->
+	    <Scalar type="int32_t" name="APot" default="200"/>              <!-- Potentiating increment (1024*mV) -->
+            <Scalar type="int32_t" name="ADep" default="200"/>              <!-- Depressing decrement (1024*mV) -->
+          </Properties>
+
+          <State>
+            <Scalar type="int32_t" name="IR_syn" default="204800"/>      <!-- Synapse weight (1024*mV) -->
+            <Scalar type="uint32_t" name="aPTimes" default="0"/>         <!-- Presynaptic fine timestep -->
+            <Scalar type="uint32_t" name="lastAPTime" default="0"/>      <!-- Presynaptic coarse time step -->
+          </State>
+          <OnReceive><![CDATA[
+       checkTimer(graphProperties, deviceProperties, deviceState); // check timer first to put currents in the closest bin
+       updateSynapse(graphProperties, deviceProperties, deviceState, edgeProperties, edgeState);
+       return 0;
+          ]]></OnReceive>
+        </InputPin>
+
+        <OutputPin name="Axon" messageTypeId="spike">
+          <OnSend><![CDATA[
+       resetNeuron(graphProperties, deviceProperties, deviceState);
+       message->srcAddr = deviceProperties->addr;
+       message->tick = deviceState->tick;
+       // inexorably a packet will be sent now, so we can update the
+       // state of the timer if necessary
+       checkTimer(graphProperties, deviceProperties, deviceState);
+       return 0;
+          ]]></OnSend>
+        </OutputPin>
+        <OutputPin name="Axon_Sup" messageTypeId="spike">
+          <OnSend><![CDATA[
+       if (deviceState->tick > graphProperties->endTime) resetNeuron(graphProperties, deviceProperties, deviceState);
+       message->srcAddr = deviceProperties->addr;
+       message->tick = deviceState->tick;
+       checkTimer(graphProperties, deviceProperties, deviceState);
+       return 0;
+          ]]></OnSend>
+        </OutputPin>
+      </DeviceType>
+      
+      <SupervisorDeviceType id="supervisorSpikeRecorder">
+        <Code><![CDATA[
+          #include <fstream>
+          #include <iostream>
+          #include <stdint.h>
+          #include <map>
+          #include <vector>
+          
+          #define USEDEBUG
+          //#define VERBOSEDEBUG
+          
+          #ifdef USEDEBUG
+            #define DEBUG_PRINT(x) std::cout << std::setprecision(2) << x << std::endl
+          #else
+            #define DEBUG_PRINT(x)
+          #endif
+          
+          #ifdef VERBOSEDEBUG
+            #define VERBOSE_PRINT(x) std::cout << std::setprecision(2) << x << std::endl
+          #else
+            #define VERBOSE_PRINT(x)
+          #endif
+          
+          map<uint32_t, vector<uint32_t>*> spikeRaster;          
+
+        ]]></Code>
+
+        <!-- SIMULATION_TIME, POPULATION_SIZE, POPULATION_MAX_IDX, and POPULATION_MIN_IDX are replaced by the generator. -->
+        <!-- This is a complete hack and needs some thought in how to parameterise. -->
+        <InputPin name="SpikeReceiver" messageTypeId="spike">
+          <Properties>
+            <Scalar type="uint32_t" name="duration" default="SIMULATION_TIME"/>
+            <Scalar type="uint32_t" name="numNeurons" default="POPULATION_SIZE"/>
+	    <Scalar type="uint32_t" name="maxIdx" default="POPULATION_MAX_IDX"/>
+	    <Scalar type="uint32_t" name="minIdx" default="POPULATION_MIN_IDX"/>
+          </Properties>
+          <State>
+            <Scalar type="uint32_t" name="numFinished" default="0"/>
+          </State>
+          <OnReceive><![CDATA[
+      if (message->srcAddr > sEdgeProperties->maxIdx)
+      {
+	 std::cout << "Error: Received a putative message from a neuron ID " << message->srcAddr << " but highest index is " << sEdgeProperties->maxIdx << std::endl;
+	 return 0;
+      }
+      if (message->srcAddr < sEdgeProperties->minIdx)
+      {
+	 std::cout << "Error: Received a putative message from a neuron ID " << message->srcAddr << " but lowest index is " << sEdgeProperties->minIdx << std::endl;
+	 return 0;
+      }
+      if (sEdgeState->numFinished > sEdgeProperties->numNeurons)
+      {
+	 std::cout << "Error: Received an unexpected message from neuron ID " << message->srcAddr << " at time " << message->tick << " when the simulation was complete" << std::endl;
+	 return 0;
+      }
+      if (message->tick > sEdgeProperties->duration+1)
+      {
+         std::cout << "Error: Received a message from neuron ID " <<  message->srcAddr << " at time " << message->tick << " beyond the end of the simulation tick " << sEdgeProperties->duration << std::endl;
+         std::cout.flush();
+	 return 0;
+      }
+      std::cout << "Received a spike from neuron ID " << message->srcAddr << " at time " << message->tick << std::endl;	 
+      vector<uint32_t>* spikeTimes = spikeRaster[message->srcAddr];
+      if (spikeTimes == 0)
+      {
+	 #ifdef USEDEBUG
+	 std::cout << "New neuron " << message->srcAddr << " reporting" << std::endl;
+         #endif
+	 spikeRaster[message->srcAddr] = (spikeTimes = new vector<uint32_t>);
+      }	 
+      if (message->tick > sEdgeProperties->duration)
+      {
+         #ifdef USEDEBUG
+         std::cout << "Neuron " << message->srcAddr << " received tick " << message->tick << " at end time " << sEdgeProperties->duration << std::endl;
+	 std::cout << "Neuron " << message->srcAddr << " has reached the end of the simulation" << std::endl;
+         #endif
+	 if (++sEdgeState->numFinished == sEdgeProperties->numNeurons)
+	 {
+	    #ifdef USEDEBUG
+	    std::cout << "All neurons have reached the end of the simulation. Dumping spikes to file" << std::endl;
+            #endif
+	    std::ofstream rasterFile("spike_times.csv", ios_base::out|ios_base::trunc);
+	    for (map<uint32_t, vector<uint32_t>*>::iterator nu = spikeRaster.begin(); nu != spikeRaster.end(); nu++)
+	    {
+	        for (vector<uint32_t>::iterator t = nu->second->begin(); t != nu->second->end(); t++)
+		{
+		    rasterFile << nu->first << ", " << *t << std::endl; 
+		}
+		delete nu->second;
+	    }
+	    spikeRaster.clear();
+	    rasterFile.close();
+	    std::cout << "Simulation complete." << std::endl;
+	    ++sEdgeState->numFinished;
+	 }
+	 return 0;
+      }
+      else
+      {
+         #ifdef USEDEBUG
+         std::cout << "Recording spike at time " << message->tick << " for neuron " << message->srcAddr << std::endl;
+         #endif
+         spikeTimes->push_back(message->tick);
+	 #ifdef USEDEBUG
+         std::cout << "Spike recorded" << std::endl;
+         #endif
+      }
+      return 0;
+          ]]></OnReceive>
+        </InputPin>
+
+      </SupervisorDeviceType>
+    </DeviceTypes>
+  </GraphType>
