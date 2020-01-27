@@ -1,0 +1,3 @@
+[submodule "micromagnetics"]
+	path = micromagnetics
+	url = https://github.com/POETSII/micromagnetics.git
