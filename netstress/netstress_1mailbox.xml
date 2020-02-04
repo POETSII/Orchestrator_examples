@@ -1,0 +1,256 @@
+<?xml version="1.0"?>
+<Graphs xmlns="https://poets-project.org/schemas/virtual-graph-schema-v2">
+  <GraphType id="net_stress">
+    <SharedCode><![CDATA[
+      #include <stdlib.h>
+      #include <cmath>
+    ]]></SharedCode>
+    
+    
+    <MessageTypes>
+      <MessageType id="dummy"/> <!-- Used for __init dummy pins -->
+      
+      <MessageType id="spam">
+        <Message>
+            <Scalar type="uint32_t" name="blockCnt"/>
+        </Message>
+      </MessageType>
+
+      <MessageType id="update">
+        <Message>
+            <Scalar type="uint32_t" name="idx"/>
+            <Scalar type="uint32_t" name="spamCnt"/>
+            <Scalar type="uint32_t" name="cycles"/>
+            <Scalar type="uint32_t" name="blockCnt"/>
+        </Message>
+      </MessageType>
+    </MessageTypes>
+    
+    
+    <DeviceTypes>
+      <DeviceType id="spammer">
+        <Properties>
+          <Scalar type="uint32_t" name="active" default="0"/>
+          <Scalar type="uint32_t" name="spamCheck" default="10000"/>
+        </Properties>
+        <State>
+          <Scalar type="uint32_t" name="spamCnt" default="0"/>
+          <Scalar type="uint32_t" name="refractory" default="0"/>
+          <Scalar type="uint32_t" name="refractoryEnter" default="0"/>
+          <Scalar type="uint32_t" name="refractoryExit" default="0"/>
+        </State>
+        
+        <SharedCode><![CDATA[
+            #include "tinsel.h"
+            
+            // ~2 seconds to allow things to settle
+            const uint32_t refractoryPeriod = (TinselClockFreq * 2000000);
+            
+            // ~5 seconds of spam
+            const uint32_t spamPeriod = (TinselClockFreq * 5000000);
+            
+        ]]></SharedCode>
+      
+        <ReadyToSend><![CDATA[  
+          // We ALWAYS send if we are active and not in a refractory period
+          if((deviceProperties->active > 0) && (deviceState->refractory == 0))
+          {
+            *readyToSend |= RTS_FLAG_spamOut;
+          }
+        ]]></ReadyToSend>
+        
+        <OnCompute><![CDATA[
+          if(deviceProperties->active > 0)
+          {
+            // Check to see if the refractory period is over
+            uint32_t cycles = tinselCycleCount();
+            if((cycles - deviceState->refractoryEnter) 
+                > refractoryPeriod)
+            {
+              deviceState->refractory = 0;
+              deviceState->refractoryExit = cycles;
+            }
+            
+            return 1;
+          } else {
+            return 0;
+          }
+        ]]></OnCompute>
+        
+        <InputPin name="initDummy" messageTypeId="dummy">
+          <OnReceive><![CDATA[
+            // Dummy input pin to handle hacky __init stuff.
+    #ifdef VERBOSEDEBUG
+            handler_log(2,"P_INIT");
+    #endif
+          ]]></OnReceive>
+        </InputPin>
+        
+        <OutputPin name="spamOut" messageTypeId="spam">
+          <OnSend><![CDATA[           
+            // Get the blocked count. We have to get to the ThreadContext 
+            // through the backpointer in the deviceInstance.
+            message->blockCnt = deviceInstance->thread->blockCount;
+            
+            
+            if(deviceState->spamCnt++ > deviceProperties->spamCheck)
+            {
+              deviceState->spamCnt = 0;
+              
+              // Check to see if we need to enter a refractory period
+              uint32_t cycles = tinselCycleCount();
+              if((cycles - deviceState->refractoryExit) 
+                  > spamPeriod)
+              {
+                deviceState->refractory = 1;
+                deviceState->refractoryEnter = cycles;
+              }
+            }
+          ]]></OnSend>
+        </OutputPin>
+      </DeviceType>
+           
+      <DeviceType id="receiver">        
+        <State>
+          <Scalar type="uint32_t" name="active" default="0"/>
+          <Scalar type="uint32_t" name="idx" default="1"/>
+          <Scalar type="uint32_t" name="lastCycles" default="0"/>
+          <Scalar type="uint32_t" name="spamCnt" default="0"/>
+          <Scalar type="uint32_t" name="maxBlockCnt" default="0"/>
+        </State>
+        
+        <SharedCode><![CDATA[
+            #include "tinsel.h"
+            
+            // ~1 seconds for sending updates to supervisor
+            const uint32_t cyclePeriod = (TinselClockFreq * 1000000);
+        ]]></SharedCode>
+        
+        <ReadyToSend><![CDATA[  
+          // We never send anything, except a ~1Hz update to the supervisor
+          if((tinselCycleCount() - deviceState->lastCycles) 
+                > cyclePeriod)
+          {
+            *readyToSend |= RTS_FLAG_super;
+          }
+        ]]></ReadyToSend>
+        
+        <OnCompute><![CDATA[
+          return 1;
+        ]]></OnCompute>
+        
+        <InputPin name="initDummy" messageTypeId="dummy">
+          <OnReceive><![CDATA[
+            // Dummy input pin to handle hacky __init stuff.
+    #ifdef VERBOSEDEBUG
+            handler_log(2,"P_INIT");
+    #endif
+            
+            // Cache starting cycle count.
+            deviceState->lastCycles = tinselCycleCount();
+          ]]></OnReceive>
+        </InputPin>
+        
+        <InputPin name="spamIn" messageTypeId="spam">
+          <OnReceive><![CDATA[
+            // Receive some spam
+            deviceState->spamCnt++;
+            if(message->blockCnt > deviceState->maxBlockCnt)
+            {
+              deviceState->maxBlockCnt = message->blockCnt;
+            }
+          ]]></OnReceive>
+        </InputPin>
+        
+        <OutputPin name="super" messageTypeId="update">
+          <OnSend><![CDATA[
+            uint32_t cycles = tinselCycleCount();
+            
+            message->idx = deviceState->idx++;
+            message->spamCnt = deviceState->spamCnt;
+            message->cycles = cycles - deviceState->lastCycles;
+            message->blockCnt = deviceState->maxBlockCnt;
+            
+            // Update cycle count
+            deviceState->lastCycles = cycles;
+            
+            deviceState->maxBlockCnt = 0;
+            
+          ]]></OnSend>
+        </OutputPin>
+      </DeviceType>
+      
+      <SupervisorDeviceType id="supervisorNode">
+        <Code><![CDATA[
+          #include <fstream>
+          #include <iostream>
+          #include <sstream>
+          #include <string>
+          #include <cstdio>
+          #include <iomanip>
+          #include <cmath>
+          
+          // ~1 second
+          const uint32_t cyclesPerSec = (TinselClockFreq * 1000000);
+            
+          std::ofstream oFile;
+        ]]></Code>
+      
+        <InputPin name="updateIn" messageTypeId="update">
+          <State>
+            <Scalar type="uint64_t" name="spamCnt" default="0"/>
+            <Scalar type="uint32_t" name="active" default="0"/>
+            <Scalar type="double" name="totalTime" default="0"/>
+          </State>
+          <OnReceive><![CDATA[
+            if(sEdgeState->active == 0)
+            {
+              oFile.open("spammer_out.csv");
+              
+              oFile << "idx,time,deltaT,cycles,spamCnt,";
+              oFile << "totalSpam,blockCnt" << std::endl;
+              oFile << "0,0,0,0,0,0,0" << std::endl;
+              sEdgeState->active = 1;
+            }
+            
+            
+            double deltaT = static_cast<double>(message->cycles)/cyclesPerSec;
+            sEdgeState->totalTime += deltaT;
+            
+            sEdgeState->spamCnt += message->spamCnt;
+            
+            oFile << message->idx << ",";              // idx
+            oFile << sEdgeState->totalTime << ",";     // time
+            oFile << deltaT << ",";                    // deltaT
+            oFile << message->cycles << ",";           // cycles
+            oFile << message->spamCnt << ",";          // spamCnt
+            oFile << sEdgeState->spamCnt << ",";       // totalSpam
+            oFile << message->blockCnt << ",";         // blockCnt
+            oFile << std::endl;
+            
+            std::cout << "IDX: " << message->idx;
+            std::cout << "\t Spam: " << message->spamCnt;
+            std::cout << "\t Total Spam: " << sEdgeState->spamCnt;
+            std::cout << "\t Blocked: " << message->blockCnt;
+            std::cout << std::endl;
+            
+          ]]></OnReceive>
+        </InputPin>
+        
+      </SupervisorDeviceType>
+      
+    </DeviceTypes>
+   </GraphType>
+  <GraphInstance id="netstress_1mailbox" graphTypeId="net_stress">
+    <DeviceInstances>
+      <DevI id="s0000" type="spammer"><P>"active": 1</P></DevI>
+      
+      <DevI id="r" type="receiver"/>
+    </DeviceInstances>
+    <EdgeInstances>
+      <EdgeI path="r:spamIn-s0000:spamOut"/>
+      
+      <EdgeI path=":updateIn-r:super"/>
+    </EdgeInstances>
+  </GraphInstance>
+</Graphs>
