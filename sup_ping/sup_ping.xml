@@ -78,11 +78,11 @@
         
         <OutputPin name="ping" messageTypeId="ping">
           <OnSend><![CDATA[
-    #ifdef VERBOSEDEBUG
+    //#ifdef VERBOSEDEBUG
             handler_log(2,"P_OUT");
-    #endif
+    //#endif
             deviceState->ping = 1;
-            message->pad = 0xF0F0F0F0;
+            message->pad = 0xFAFAFAFA;
             message->pad2 = 0xF0F0F0F0;
           ]]></OnSend>
         </OutputPin>
@@ -95,13 +95,13 @@
             deviceState->pong = 1;
             
             message->idx = deviceProperties->idx;
-            //message->tgtHW = deviceInstance->outputPins[0].targets[0].hwAddr;
-            //message->tgtSW = deviceInstance->outputPins[0].targets[0].swAddr;
-            //message->tgtPin = deviceInstance->outputPins[0].targets[0].pinAddr;
+            message->tgtHW = deviceInstance->outputPins[0].targets[0].hwAddr;
+            message->tgtSW = deviceInstance->outputPins[0].targets[0].swAddr;
+            message->tgtPin = deviceInstance->outputPins[0].targets[0].pinAddr;
             
-            message->tgtHW = deviceInstance->outputPins[0].targets[0].tgt;
-            message->tgtSW = deviceInstance->outputPins[0].targets[0].tgtPin;
-            message->tgtPin = deviceInstance->outputPins[0].targets[0].tgtEdge;
+            //message->tgtHW = deviceInstance->outputPins[0].targets[0].tgt;
+            //message->tgtSW = deviceInstance->outputPins[0].targets[0].tgtPin;
+            //message->tgtPin = deviceInstance->outputPins[0].targets[0].tgtEdge;
           ]]></OnSend>
         </OutputPin>
       </DeviceType>
@@ -150,7 +150,7 @@
             handler_log(2,"P_OUT");
     #endif
             // Dummy Output Pin as it seems to be needed...
-            message->pad = 0xF0F0F0F0;
+            message->pad = 0xFBFBFBFB;
             message->pad2 = 0xF0F0F0F0;
           ]]></OnSend>
         </OutputPin>
@@ -225,7 +225,7 @@
 
   <GraphInstance id="ping_pong" graphTypeId="ping_pong_t">
     <DeviceInstances>
-      <DevI id="a_0" type="A"><P>"idx": 0</P></DevI>
+      <DevI id="a_0" type="A"><P>"idx": 33</P></DevI>
       <DevI id="b_10" type="B"><P>"idx": 166</P></DevI>
       <DevI id="b_20" type="B"><P>"idx": 266</P></DevI>
       <DevI id="b_0" type="B"><P>"idx": 66</P></DevI>

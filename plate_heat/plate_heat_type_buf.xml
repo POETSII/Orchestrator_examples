@@ -154,7 +154,6 @@
               deviceState->hc = 0;
               deviceState->fin = 0;
               deviceState->t = tCalc;
-              deviceState->active = 1;
               deviceState->updated = 1;
               heartbeatIndex = 0;
             }
@@ -174,7 +173,17 @@
 
         <OnCompute><![CDATA[
           //TODO: Write heartbeat code
-
+          
+          if(deviceState->active == 1)
+          {
+            updateTemp(deviceState, deviceProperties);
+          }
+          
+          if((deviceState->updated > 0)) {  // && (deviceProperties->dummy == 0)
+            return(1);
+          }
+          
+          
           if(deviceInstance->deviceID == 0)
           {
             if(heartbeatIndex > HBIDX_DEF)  // Execute on every tenth OnIdle.
@@ -219,12 +228,13 @@
             if(deviceState->nNorth == 0)
             {
               deviceState->nNorth = 1;
+              deviceState->active = 1;
               deviceState->activeCount++;
             }
             
             deviceState->tNorth = message->t;
             deviceState->nCnt++;
-            updateTemp(deviceState, deviceProperties);
+            //updateTemp(deviceState, deviceProperties);
           ]]></OnReceive>
         </InputPin>
 
@@ -236,12 +246,13 @@
             if(deviceState->nEast == 0)
             {
               deviceState->nEast = 1;
+              deviceState->active = 1;
               deviceState->activeCount++;
             }
             
             deviceState->tEast = message->t;
             deviceState->eCnt++;
-            updateTemp(deviceState, deviceProperties);
+            //updateTemp(deviceState, deviceProperties);
           ]]></OnReceive>
         </InputPin>
 
@@ -253,12 +264,13 @@
             if(deviceState->nSouth == 0)
             {
               deviceState->nSouth = 1;
+              deviceState->active = 1;
               deviceState->activeCount++;
             }
             
             deviceState->tSouth = message->t;
             deviceState->sCnt++;
-            updateTemp(deviceState, deviceProperties);
+            //updateTemp(deviceState, deviceProperties);
           ]]></OnReceive>
         </InputPin>
 
@@ -270,12 +282,13 @@
             if(deviceState->nWest == 0)
             {
               deviceState->nWest = 1;
+              deviceState->active = 1;
               deviceState->activeCount++;
             }
             
             deviceState->tWest = message->t;
             deviceState->wCnt++;
-            updateTemp(deviceState, deviceProperties);
+            //updateTemp(deviceState, deviceProperties);
           ]]></OnReceive>
         </InputPin>
 
