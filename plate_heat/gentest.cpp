@@ -187,7 +187,7 @@ int main(int argc, const char * argv[]) {
     args::ValueFlag<float> mCh(optional, "float", "Set the minimum change in temperature required to trigger a message. Default = 0.5", {'m'});
     args::ValueFlag<float> tFx(optional, "float", "Set the temperature of the fixed nodes. Default = 100", {'t'});
     args::ValueFlag<int> fNo(optional, "int", "Fixed-node pattern. (0) 2 opposite corners, (1) 4 opposite corners. Default=0", {'f'});
-    args::ValueFlag<std::string> typF(optional, "filename", "Filename of the Type file, default=plate_heat_type.xml", {'x', "type"});
+    args::ValueFlag<std::string> typF(optional, "filename", "Filename of the Type file, default=plate_heat_type.xml", {'g', "type"});
     args::ValueFlag<std::string> oAppend(optional, "string", "String to append to the generated filename before .xml, default=\"\"", {'o'});
     args::ValueFlag<int> sq(optional, "int", "Squares: Set whether devices are generated linearly (0) or in blocks (1 = thread-level, 2 = box-level), default = 0", {'s'});
     args::ValueFlag<int> sd(optional, "int", "Square Dimension - used to set the x & y dimension of the square size, default = 32 (e.g. 1024 devices)", {'u', "sd"});
@@ -215,10 +215,10 @@ int main(int argc, const char * argv[]) {
     //Set Dimensions
     if(dIn) 
     {
-          xMax = yMax = args::get(dIn);
+        xMax = yMax = args::get(dIn);
     } else {
-         xMax = (xIn)? args::get(xIn) : XDEFAULT;
-         yMax = (yIn)? args::get(yIn) : YDEFAULT;
+        xMax = (xIn)? args::get(xIn) : XDEFAULT;
+        yMax = (yIn)? args::get(yIn) : YDEFAULT;
     }
 
     //Set the minChg
@@ -343,10 +343,22 @@ int main(int argc, const char * argv[]) {
     eFile.open(gIDstr+gAppend+"_edges.xml", std::fstream::in | std::fstream::out | std::fstream::trunc); //Scratch file for the edges
 
     gFile.precision(2);    //Set float precision to 2D.P.
-
-    //Write XML Preamble.
+    
+    // Write XML Preamble.
     gFile << "<?xml version=\"1.0\"?>" << std::endl;
     std::cout << "<?xml version=\"1.0\"?>" << std::endl;
+    
+    
+    // Plop the build info at the top of the file
+    gFile << "<!-- Generated using the POETS Orchestrator plate_heat example generator." << std::endl;
+    gFile << "\t\tAvailable from https://github.com/POETSII/Orchestrator_examples" << std::endl;
+    gFile << "\t\tThis file can be regenerated with:" << std::endl;
+    gFile << "\t\t\t";
+    for (int i = 0; i < argc; ++i) {
+        gFile << argv[i] << " ";
+    }
+    gFile << std::endl << "-->" << std::endl;
+    
     gFile << "<Graphs xmlns=\"https://poets-project.org/schemas/virtual-graph-schema-v2\">" << std::endl;
     std::cout << "<Graphs xmlns=\"https://poets-project.org/schemas/virtual-graph-schema-v2\">" << std::endl;
 
