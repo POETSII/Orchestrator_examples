@@ -532,7 +532,7 @@
               //Something has gone horribly wrong and we have received a message for a node that can't exist.
               DEBUG_PRINT("ERR_MSG_CELL_NE");
             } else {
-              uint64_t loc = (message->x*sEdgeProperties->xSize) + message->y;
+              uint64_t loc = (message->x*sEdgeProperties->ySize) + message->y;
               
               if(message->fin && (message->finIdx > sEdgeState->data_t[loc].finIdx))
               {
