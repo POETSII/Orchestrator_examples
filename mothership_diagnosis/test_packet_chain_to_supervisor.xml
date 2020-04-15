@@ -31,20 +31,16 @@ same value, sending the second packet to N2.
 
 When N2 receives such a packet from N1, it sends:
 
- - Sends two packets to the supervisor device, one with payload value 47 and
-   one with payload value 208.
+ - One packet to the supervisor device with payload value 208.
 
- - Sends one packet to N1 with payload value 208.
+ - One packet to N1 with payload value 208.
 
 When N1 receives such a packet from N2, it performs the same operation as it
 performed previously, with payload value 208, sending the to normal device N0.
 
-When N0 receives the packet from N1, it sends a "208" packet to the supervisor
-device.
-
-The net result, if all is well, is that the supervisor device receives six
-packets - three "47" packets (one from each normal device), and three "208"
-packets (one from each normal device).
+The net result, if all is well, is that the supervisor device receives four
+packets - two "47" packets (one each from N0 and N1), and two "208"
+packets (one each from N1 and N2).
 -->
 <Graphs xmlns="https://poets-project.org/schemas/virtual-graph-schema-v2">
   <GraphType id="test_packet_chain_to_supervisor">
@@ -66,10 +62,9 @@ packets (one from each normal device).
           <Scalar type="uint8_t" name="sendLeft" default="0"/>
           <Scalar type="uint8_t" name="sendRight" default="0"/>
         </State>
-        <ReadyToSend><![CDATA[
-        if (deviceState->sendRight == 1) *readyToSend |= RTS_FLAG_send_right;
-        if (deviceState->sendLeft == 1) *readyToSend |= RTS_FLAG_send_left;
-        ]]></ReadyToSend>
+        <ReadyToSend><![CDATA[ if (deviceState->sendRight == 1) *readyToSend |=
+        RTS_FLAG_send_right; if (deviceState->sendLeft == 1) *readyToSend |=
+        RTS_FLAG_send_left; ]]></ReadyToSend>
         <OnCompute><![CDATA[
             return deviceState->sendRight;  /* Initial packet from N0. */
         ]]></OnCompute>
@@ -80,13 +75,19 @@ packets (one from each normal device).
         </InputPin>
         <InputPin name="recv_left" messageTypeId="simple">
           <OnReceive><![CDATA[
-          if (deviceProperties->id == 2) deviceState->sendLeft = 1;
-          else deviceState->sendRight = 1;
+          if (message->content == 47)  /* Redundant, warning suppression. */
+          {
+              if (deviceProperties->id == 2) deviceState->sendLeft = 1;
+              else deviceState->sendRight = 1;
+          }
           ]]></OnReceive>
         </InputPin>
         <InputPin name="recv_right" messageTypeId="simple">
           <OnReceive><![CDATA[
-          if (deviceProperties->id != 0) deviceState->sendLeft = 1;
+          if (message->content == 208)  /* Redundant, warning suppression. */
+          {
+              if (deviceProperties->id != 0) deviceState->sendLeft = 1;
+          }
           ]]></OnReceive>
         </InputPin>
         <OutputPin name="send_left" messageTypeId="simple">
@@ -113,14 +114,14 @@ packets (one from each normal device).
             <Scalar type="uint8_t" name="failed" default="0"/>
             <Array name="received" length="3">
               <Tuple name="payloads">
-                <Scalar type="uint8_t" name="47received" default="0"/>
-                <Scalar type="uint8_t" name="208received" default="0"/>
+                <Scalar type="uint8_t" name="firstSent" default="0"/>
+                <Scalar type="uint8_t" name="secondSent" default="0"/>
               </Tuple>
             </Array>
           </State>
           <OnReceive><![CDATA[
           /* Do nothing if we've failed already. */
-          if (sEdgeState->failed != 0) {
+          if (sEdgeState->failed == 0) {
 
           FILE* resultFile = fopen("test_packet_chain_to_supervisor_result",
                                    "w");
@@ -130,35 +131,44 @@ packets (one from each normal device).
           else {
 
           /* Check payload, failing fast. */
-          if (message->payload != 47 and message->payload != 208)
+          if (message->content != 47 and message->content != 208)
           {fputs("1", resultFile); sEdgeState->failed = 1;}
           else {
 
           /* Check whether we've already received the message in question,
           failing fast. If not, set that we've received the message. */
-          if (message->payload == 47)
+          if (message->content == 47)
           {
-              if (sEdgeState->payloads[message->id].47received == 1)
+              if (sEdgeState->payloads[message->id].firstSent == 1)
                   {fputs("1", resultFile); sEdgeState->failed = 1;}
-              else sEdgeState->payloads[message->id].47received = 1;
+              else sEdgeState->payloads[message->id].firstSent = 1;
           }
-          else if (message->payload == 208)
+          else if (message->content == 208)
           {
-              if (sEdgeState->payloads[message->id].208received == 1)
+              if (sEdgeState->payloads[message->id].secondSent == 1)
                   {fputs("1", resultFile); sEdgeState->failed = 1;}
-              else sEdgeState->payloads[message->id].208received = 1;
+              else sEdgeState->payloads[message->id].secondSent = 1;
+          }
+
+          /* Check a failure condition. */
+          if (sEdgeState->payloads[0].secondSent == 1 or
+              sEdgeState->payloads[2].firstSent == 1) {
+              fputs("1", resultFile);
+              sEdgeState->failed = 1;
           }
 
           /* Check the pass condition. */
-          if (sEdgeState->payloads[0].47received == 1 and
-              sEdgeState->payloads[0].208received == 1 and
-              sEdgeState->payloads[1].47received == 1 and
-              sEdgeState->payloads[1].208received == 1 and
-              sEdgeState->payloads[2].47received == 1 and
-              sEdgeState->payloads[2].208received == 1)
-              fputs("0", resultFile);
+          if (sEdgeState->payloads[0].firstSent == 1 and
+              sEdgeState->payloads[0].secondSent == 0 and
+              sEdgeState->payloads[1].firstSent == 1 and
+              sEdgeState->payloads[1].secondSent == 1 and
+              sEdgeState->payloads[2].firstSent == 0 and
+              sEdgeState->payloads[2].secondSent == 1) fputs("0", resultFile);
+           }}
 
-          }}}
+           fclose(resultFile);
+
+           }
           ]]></OnReceive>
         </InputPin>
       </SupervisorDeviceType>
@@ -169,19 +179,17 @@ packets (one from each normal device).
     <DeviceInstances>
       <DevI id="0" type="normal_device"><P>"id": 0</P><S>"sendRight": 1</S></DevI>
       <DevI id="1" type="normal_device"><P>"id": 1</P></DevI>
-      <DevI id="2" type="normal_device"><P>"id": 1</P></DevI>
+      <DevI id="2" type="normal_device"><P>"id": 2</P></DevI>
     </DeviceInstances>
     <EdgeInstances>
-      <EdgeI path=":pull-0:send_left"/>
       <EdgeI path=":pull-0:send_right"/>
       <EdgeI path=":pull-1:send_left"/>
       <EdgeI path=":pull-1:send_right"/>
       <EdgeI path=":pull-2:send_left"/>
-      <EdgeI path=":pull-2:send_right"/>
-      <EdgeI path="1:recv_left-0:send_left"/>
-      <EdgeI path="2:recv_left-1:send_left"/>
-      <EdgeI path="1:recv_right-2:send_right"/>
-      <EdgeI path="0:recv_right-1:send_right"/>
+      <EdgeI path="1:recv_left-0:send_right"/>
+      <EdgeI path="2:recv_left-1:send_right"/>
+      <EdgeI path="1:recv_right-2:send_left"/>
+      <EdgeI path="0:recv_right-1:send_left"/>
     </EdgeInstances>
   </GraphInstance>
 </Graphs>
