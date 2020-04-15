@@ -21,15 +21,18 @@ different hardware addresses (depending on where they are placed):
 <Graphs xmlns="https://poets-project.org/schemas/virtual-graph-schema-v2">
   <GraphType id="test_debug_uart">
     <!-- Normal devices don't send any messages in this application. -->
-    <MessageTypes/>
+    <SharedCode><![CDATA[
+    #include "tinsel.h"
+    ]]></SharedCode>
+    <MessageTypes>
+    <MessageType id="dummy"/>
+    </MessageTypes>
+
     <DeviceTypes>
       <DeviceType id="AABB">
         <State>
           <Scalar type="uint8_t" name="spoken" default="0"/>
         </State>
-        <SharedCode><![CDATA[
-          #include "tinsel.h"
-        ]]><SharedCode/>
         <OnCompute><![CDATA[
         if (deviceState->spoken == 0)
         {
@@ -39,14 +42,15 @@ different hardware addresses (depending on where they are placed):
         }
         return 0;
         ]]></OnCompute>
+        <ReadyToSend><![CDATA[/* Stub */]]></ReadyToSend>
+        <InputPin name="dummy" messageTypeId="dummy">
+          <OnReceive><![CDATA[/* Stub */]]></OnReceive>
+        </InputPin>
       </DeviceType>
       <DeviceType id="CC">
         <State>
           <Scalar type="uint8_t" name="spoken" default="0"/>
         </State>
-        <SharedCode><![CDATA[
-          #include "tinsel.h"
-        ]]><SharedCode/>
         <OnCompute><![CDATA[
         if (deviceState->spoken == 0)
         {
@@ -55,6 +59,10 @@ different hardware addresses (depending on where they are placed):
         }
         return 0;
         ]]></OnCompute>
+        <ReadyToSend><![CDATA[/* Stub */]]></ReadyToSend>
+        <InputPin name="dummy" messageTypeId="dummy">
+          <OnReceive><![CDATA[/* Stub */]]></OnReceive>
+        </InputPin>
       </DeviceType>
     </DeviceTypes>
   </GraphType>
