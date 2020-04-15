@@ -69,9 +69,7 @@ packets (one each from N1 and N2).
             return deviceState->sendRight;  /* Initial packet from N0. */
         ]]></OnCompute>
         <InputPin name="dummy" messageTypeId="dummy">
-          <OnReceive><![CDATA[
-          /* Stub */
-          ]]></OnReceive>
+          <OnReceive><![CDATA[/* Stub */]]></OnReceive>
         </InputPin>
         <InputPin name="recv_left" messageTypeId="simple">
           <OnReceive><![CDATA[

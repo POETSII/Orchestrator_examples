@@ -45,9 +45,7 @@ which contains a zero on pass and non-zero on failure.
             return !deviceState->tick;
         ]]></OnCompute>
         <InputPin name="dummy" messageTypeId="dummy">
-          <OnReceive><![CDATA[
-          /* Stub */
-          ]]></OnReceive>
+          <OnReceive><![CDATA[/* Stub */]]></OnReceive>
         </InputPin>
         <OutputPin name="push" messageTypeId="simple">
           <OnSend><![CDATA[
