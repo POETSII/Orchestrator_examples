@@ -20,7 +20,9 @@ different hardware addresses (depending on where they are placed):
 <Graphs xmlns="https://poets-project.org/schemas/virtual-graph-schema-v2">
   <GraphType id="test_handler_log">
     <!-- Normal devices don't send any messages in this application. -->
-    <MessageTypes/>
+    <MessageTypes>
+    <MessageType id="dummy"/>
+    </MessageTypes>
     <DeviceTypes>
       <DeviceType id="letters">
         <State>
@@ -34,6 +36,10 @@ different hardware addresses (depending on where they are placed):
         }
         return 0;
         ]]></OnCompute>
+        <ReadyToSend><![CDATA[/* Stub */]]></ReadyToSend>
+        <InputPin name="dummy" messageTypeId="dummy">
+          <OnReceive><![CDATA[/* Stub */]]></OnReceive>
+        </InputPin>
       </DeviceType>
       <DeviceType id="numbers">
         <State>
@@ -47,6 +53,10 @@ different hardware addresses (depending on where they are placed):
         }
         return 0;
         ]]></OnCompute>
+        <ReadyToSend><![CDATA[/* Stub */]]></ReadyToSend>
+        <InputPin name="dummy" messageTypeId="dummy">
+          <OnReceive><![CDATA[/* Stub */]]></OnReceive>
+        </InputPin>
       </DeviceType>
     </DeviceTypes>
   </GraphType>
