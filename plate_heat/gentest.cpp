@@ -392,7 +392,7 @@ int main(int argc, const char * argv[]) {
     std::ostringstream ssInst;
     ssInst << "  <GraphInstance id=\"" << gIDstr << "\" ";
     ssInst << "graphTypeId=\"" << gType << "\" ";
-    ssInst << "P=\"{" << xMax << "," << yMax << "," << nodeCount << "}\"/>";
+    ssInst << "P=\"{" << xMax << "," << yMax << "," << nodeCount << "}"/>";
     ssInst << std::endl;
 
     gInstance = ssInst.str();
