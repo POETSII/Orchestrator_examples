@@ -1,0 +1,76 @@
+<?xml version="1.0"?>
+<!--
+This XML demonstrates that:
+
+ - Debug bytes are sent over UART, and are consumed by the Mothership and
+   written in a user sympathetic manner.
+
+ - The Mothership consumes debug packets from different sources without
+   overlaying the bytes.
+
+Different device types are used here to ensure that they have different
+hardware addresses. Note that there are two devices of type "1".
+
+If completed appropriately, six debug bytes should be produced from
+different hardware addresses (depending on where they are placed):
+
+ - "0xAA" and "0xBB" (twice)
+ - "0xCC"
+
+-->
+<Graphs xmlns="https://poets-project.org/schemas/virtual-graph-schema-v2">
+  <GraphType id="test_debug_uart">
+    <!-- Normal devices don't send any messages in this application. -->
+    <SharedCode><![CDATA[
+    #include "tinsel.h"
+    ]]></SharedCode>
+    <MessageTypes>
+    <MessageType id="dummy"/>
+    </MessageTypes>
+
+    <DeviceTypes>
+      <DeviceType id="AABB">
+        <State>
+          <Scalar type="uint8_t" name="spoken" default="0"/>
+        </State>
+        <OnCompute><![CDATA[
+        if (deviceState->spoken == 0)
+        {
+            deviceState->spoken = 1;
+            tinselUartTryPut(170);  /* AA */
+            tinselUartTryPut(187);  /* BB */
+        }
+        return 0;
+        ]]></OnCompute>
+        <ReadyToSend><![CDATA[/* Stub */]]></ReadyToSend>
+        <InputPin name="dummy" messageTypeId="dummy">
+          <OnReceive><![CDATA[/* Stub */]]></OnReceive>
+        </InputPin>
+      </DeviceType>
+      <DeviceType id="CC">
+        <State>
+          <Scalar type="uint8_t" name="spoken" default="0"/>
+        </State>
+        <OnCompute><![CDATA[
+        if (deviceState->spoken == 0)
+        {
+            deviceState->spoken = 1;
+            tinselUartTryPut(204);  /* CC */
+        }
+        return 0;
+        ]]></OnCompute>
+        <ReadyToSend><![CDATA[/* Stub */]]></ReadyToSend>
+        <InputPin name="dummy" messageTypeId="dummy">
+          <OnReceive><![CDATA[/* Stub */]]></OnReceive>
+        </InputPin>
+      </DeviceType>
+    </DeviceTypes>
+  </GraphType>
+  <GraphInstance id="test_debug_uart" graphTypeId="test_debug_uart">
+    <DeviceInstances>
+      <DevI id="0" type="AABB"/>
+      <DevI id="1" type="AABB"/>
+      <DevI id="2" type="CC"/>
+    </DeviceInstances>
+  </GraphInstance>
+</Graphs>

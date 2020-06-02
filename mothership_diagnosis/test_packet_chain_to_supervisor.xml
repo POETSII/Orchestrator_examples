@@ -1,0 +1,193 @@
+<?xml version="1.0"?>
+<!--
+This XML demonstrates that:
+
+ - Multiple normal devices placed within the same box can send multiple packets
+   to the application's supervisor.
+
+ - The Mothership receives each packet calls the appropriate supervisor
+   method individually, without duplicating any packets, and processing them
+   exactly once.
+
+ - The supervisor method functions as intended, and the payload is correctly
+   transferred.
+
+The test result is created in the file "test_packet_chain_to_supervisor", which
+contains a zero on pass and non-zero on failure.
+-->
+
+<!--
+What follows is a description of how this application works.
+
+Two packets are sent by the normal device with id "0" (N0) at the beginning of
+the application:
+
+ - One to the supervisor device, with payload value 47.
+
+ - One to normal device with id "1", with payload value 47.
+
+When N1 receives such a packet from N0, it performs the same operation with the
+same value, sending the second packet to N2.
+
+When N2 receives such a packet from N1, it sends:
+
+ - One packet to the supervisor device with payload value 208.
+
+ - One packet to N1 with payload value 208.
+
+When N1 receives such a packet from N2, it performs the same operation as it
+performed previously, with payload value 208, sending the to normal device N0.
+
+The net result, if all is well, is that the supervisor device receives four
+packets - two "47" packets (one each from N0 and N1), and two "208"
+packets (one each from N1 and N2).
+-->
+<Graphs xmlns="https://poets-project.org/schemas/virtual-graph-schema-v2">
+  <GraphType id="test_packet_chain_to_supervisor">
+    <MessageTypes>
+      <MessageType id="dummy"/>
+      <MessageType id="simple">
+        <Message>
+          <Scalar type="uint8_t" name="id"/>
+          <Scalar type="uint8_t" name="content"/>
+        </Message>
+      </MessageType>
+    </MessageTypes>
+    <DeviceTypes>
+      <DeviceType id="normal_device">
+        <Properties>
+          <Scalar type="uint8_t" name="id" default="255"/>
+        </Properties>
+        <State>
+          <Scalar type="uint8_t" name="sendLeft" default="0"/>
+          <Scalar type="uint8_t" name="sendRight" default="0"/>
+        </State>
+        <ReadyToSend><![CDATA[ if (deviceState->sendRight == 1) *readyToSend |=
+        RTS_FLAG_send_right; if (deviceState->sendLeft == 1) *readyToSend |=
+        RTS_FLAG_send_left; ]]></ReadyToSend>
+        <OnCompute><![CDATA[
+            return deviceState->sendRight;  /* Initial packet from N0. */
+        ]]></OnCompute>
+        <InputPin name="dummy" messageTypeId="dummy">
+          <OnReceive><![CDATA[/* Stub */]]></OnReceive>
+        </InputPin>
+        <InputPin name="recv_left" messageTypeId="simple">
+          <OnReceive><![CDATA[
+          if (message->content == 47)  /* Redundant, warning suppression. */
+          {
+              if (deviceProperties->id == 2) deviceState->sendLeft = 1;
+              else deviceState->sendRight = 1;
+          }
+          ]]></OnReceive>
+        </InputPin>
+        <InputPin name="recv_right" messageTypeId="simple">
+          <OnReceive><![CDATA[
+          if (message->content == 208)  /* Redundant, warning suppression. */
+          {
+              if (deviceProperties->id != 0) deviceState->sendLeft = 1;
+          }
+          ]]></OnReceive>
+        </InputPin>
+        <OutputPin name="send_left" messageTypeId="simple">
+          <OnSend><![CDATA[
+          message->id = deviceProperties->id;
+          message->content = 208;
+          deviceState->sendLeft = 0;
+          ]]></OnSend>
+        </OutputPin>
+        <OutputPin name="send_right" messageTypeId="simple">
+          <OnSend><![CDATA[
+          message->id = deviceProperties->id;
+          message->content = 47;
+          deviceState->sendRight = 0;
+          ]]></OnSend>
+        </OutputPin>
+      </DeviceType>
+      <SupervisorDeviceType id="supervisor_device">
+        <Code><![CDATA[
+        #include <stdio.h>
+        ]]></Code>
+        <InputPin name="pull" messageTypeId="simple">
+          <State>
+            <Scalar type="uint8_t" name="failed" default="0"/>
+            <Array name="received" length="3">
+              <Tuple name="payloads">
+                <Scalar type="uint8_t" name="firstSent" default="0"/>
+                <Scalar type="uint8_t" name="secondSent" default="0"/>
+              </Tuple>
+            </Array>
+          </State>
+          <OnReceive><![CDATA[
+          /* Do nothing if we've failed already. */
+          if (sEdgeState->failed == 0) {
+
+          FILE* resultFile = fopen("test_packet_chain_to_supervisor_result",
+                                   "w");
+
+          /* Check ID, failing fast. */
+          if (message->id > 2){fputs("1", resultFile); sEdgeState->failed = 1;}
+          else {
+
+          /* Check payload, failing fast. */
+          if (message->content != 47 and message->content != 208)
+          {fputs("1", resultFile); sEdgeState->failed = 1;}
+          else {
+
+          /* Check whether we've already received the message in question,
+          failing fast. If not, set that we've received the message. */
+          if (message->content == 47)
+          {
+              if (sEdgeState->payloads[message->id].firstSent == 1)
+                  {fputs("1", resultFile); sEdgeState->failed = 1;}
+              else sEdgeState->payloads[message->id].firstSent = 1;
+          }
+          else if (message->content == 208)
+          {
+              if (sEdgeState->payloads[message->id].secondSent == 1)
+                  {fputs("1", resultFile); sEdgeState->failed = 1;}
+              else sEdgeState->payloads[message->id].secondSent = 1;
+          }
+
+          /* Check a failure condition. */
+          if (sEdgeState->payloads[0].secondSent == 1 or
+              sEdgeState->payloads[2].firstSent == 1) {
+              fputs("1", resultFile);
+              sEdgeState->failed = 1;
+          }
+
+          /* Check the pass condition. */
+          if (sEdgeState->payloads[0].firstSent == 1 and
+              sEdgeState->payloads[0].secondSent == 0 and
+              sEdgeState->payloads[1].firstSent == 1 and
+              sEdgeState->payloads[1].secondSent == 1 and
+              sEdgeState->payloads[2].firstSent == 0 and
+              sEdgeState->payloads[2].secondSent == 1) fputs("0", resultFile);
+           }}
+
+           fclose(resultFile);
+
+           }
+          ]]></OnReceive>
+        </InputPin>
+      </SupervisorDeviceType>
+    </DeviceTypes>
+  </GraphType>
+  <GraphInstance id="test_packet_chain_to_supervisor"
+                 graphTypeId="test_packet_chain_to_supervisor">
+    <DeviceInstances>
+      <DevI id="0" type="normal_device"><P>"id": 0</P><S>"sendRight": 1</S></DevI>
+      <DevI id="1" type="normal_device"><P>"id": 1</P></DevI>
+      <DevI id="2" type="normal_device"><P>"id": 2</P></DevI>
+    </DeviceInstances>
+    <EdgeInstances>
+      <EdgeI path=":pull-0:send_right"/>
+      <EdgeI path=":pull-1:send_left"/>
+      <EdgeI path=":pull-1:send_right"/>
+      <EdgeI path=":pull-2:send_left"/>
+      <EdgeI path="1:recv_left-0:send_right"/>
+      <EdgeI path="2:recv_left-1:send_right"/>
+      <EdgeI path="1:recv_right-2:send_left"/>
+      <EdgeI path="0:recv_right-1:send_left"/>
+    </EdgeInstances>
+  </GraphInstance>
+</Graphs>

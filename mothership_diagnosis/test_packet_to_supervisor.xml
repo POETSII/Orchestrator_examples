@@ -1,0 +1,88 @@
+<?xml version="1.0"?>
+<!--
+This XML demonstrates that:
+
+ - A normal device can send a single packet to the application's supervisor
+   device when the application is started.
+
+ - The Mothership receives the packet and calls the appropriate supervisor
+   method, which consumes the packet.
+
+ - The supervisor method functions as intended, and the payload is correctly
+   transferred.
+
+The packet is sent by the normal device exactly once at the beginning of the
+application. This is achieved via the "tick" property of the normal device,
+which is zero prior to sending the packet, and is non-zero otherwise. The
+ReadyToSend logic only sends a packet if "tick" is zero.
+
+The payload, the uin8_t "content" field in the message, is set to a hardcoded
+value. This hardcoded value is checked in the supervisor to determine the test
+result.
+
+The test result is created in the file "test_packet_to_supervisor_result",
+which contains a zero on pass and non-zero on failure.
+-->
+<Graphs xmlns="https://poets-project.org/schemas/virtual-graph-schema-v2">
+  <GraphType id="test_packet_to_supervisor">
+    <MessageTypes>
+      <MessageType id="dummy"/>
+      <MessageType id="simple">
+        <Message>
+          <Scalar type="uint8_t" name="content"/>
+        </Message>
+      </MessageType>
+    </MessageTypes>
+    <DeviceTypes>
+      <DeviceType id="normal_device">
+        <State>
+          <Scalar type="uint8_t" name="tick" default="0"/>
+        </State>
+        <ReadyToSend><![CDATA[
+        if (deviceState->tick == 0) *readyToSend |= RTS_FLAG_push;
+        ]]></ReadyToSend>
+        <OnCompute><![CDATA[
+            return !deviceState->tick;
+        ]]></OnCompute>
+        <InputPin name="dummy" messageTypeId="dummy">
+          <OnReceive><![CDATA[/* Stub */]]></OnReceive>
+        </InputPin>
+        <OutputPin name="push" messageTypeId="simple">
+          <OnSend><![CDATA[
+          message->content = 170;  /* = 0b10101010 = 0xAA */
+          deviceState->tick = deviceState->tick + 1;
+          ]]></OnSend>
+        </OutputPin>
+      </DeviceType>
+      <SupervisorDeviceType id="supervisor_device">
+        <Code><![CDATA[
+        #include <stdio.h>
+        ]]></Code>
+        <InputPin name="pull" messageTypeId="simple">
+          <State>
+            <Scalar type="uint8_t" name="packetCount" default="0"/>
+          </State>
+          <OnReceive><![CDATA[
+          FILE* resultFile = fopen("test_packet_to_supervisor_result", "w");
+          if (sEdgeState->packetCount == 0)
+          {
+              if (message->content == 170) fputs("0", resultFile);
+              else fputs("1", resultFile);
+          }
+          else fputs("1", resultFile);
+          fclose(resultFile);
+          ]]></OnReceive>
+        </InputPin>
+      </SupervisorDeviceType>
+    </DeviceTypes>
+  </GraphType>
+  <GraphInstance id="test_packet_to_supervisor"
+                 graphTypeId="test_packet_to_supervisor">
+    <DeviceInstances>
+      <DevI id="0" type="normal_device"/>
+    </DeviceInstances>
+    <EdgeInstances>
+      <EdgeI path=":pull-0:push"/>
+    </EdgeInstances>
+  </GraphInstance>
+</Graphs>

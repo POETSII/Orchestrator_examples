@@ -1,0 +1,70 @@
+<?xml version="1.0"?>
+<!--
+This XML demonstrates that:
+
+ - Handler log fragments log messages into a series of P_LOG_PKT packets.
+
+ - The Mothership consumes packets from different sources without overlaying
+   the messages.
+
+Different device types are used here to ensure that they have different
+hardware addresses. Note that there are two devices of type "1".
+
+If completed appropriately, three log messages should be produced from
+different hardware addresses (depending on where they are placed):
+
+ - "abcdefghijabcdefghijabcdefghijabcdefghij" (twice)
+ - "0123456789012345678901234567890123456789"
+
+-->
+<Graphs xmlns="https://poets-project.org/schemas/virtual-graph-schema-v2">
+  <GraphType id="test_handler_log">
+    <!-- Normal devices don't send any messages in this application. -->
+    <MessageTypes>
+    <MessageType id="dummy"/>
+    </MessageTypes>
+    <DeviceTypes>
+      <DeviceType id="letters">
+        <State>
+          <Scalar type="uint8_t" name="spoken" default="0"/>
+        </State>
+        <OnCompute><![CDATA[
+        if (deviceState->spoken == 0)
+        {
+            deviceState->spoken = 1;
+            handler_log(2, "abcdefghijabcdefghijabcdefghijabcdefghij");
+        }
+        return 0;
+        ]]></OnCompute>
+        <ReadyToSend><![CDATA[/* Stub */]]></ReadyToSend>
+        <InputPin name="dummy" messageTypeId="dummy">
+          <OnReceive><![CDATA[/* Stub */]]></OnReceive>
+        </InputPin>
+      </DeviceType>
+      <DeviceType id="numbers">
+        <State>
+          <Scalar type="uint8_t" name="spoken" default="0"/>
+        </State>
+        <OnCompute><![CDATA[
+        if (deviceState->spoken == 0)
+        {
+            deviceState->spoken = 1;
+            handler_log(2, "0123456789012345678901234567890123456789");
+        }
+        return 0;
+        ]]></OnCompute>
+        <ReadyToSend><![CDATA[/* Stub */]]></ReadyToSend>
+        <InputPin name="dummy" messageTypeId="dummy">
+          <OnReceive><![CDATA[/* Stub */]]></OnReceive>
+        </InputPin>
+      </DeviceType>
+    </DeviceTypes>
+  </GraphType>
+  <GraphInstance id="test_handler_log" graphTypeId="test_handler_log">
+    <DeviceInstances>
+      <DevI id="0" type="letters"/>
+      <DevI id="1" type="letters"/>
+      <DevI id="2" type="numbers"/>
+    </DeviceInstances>
+  </GraphInstance>
+</Graphs>
