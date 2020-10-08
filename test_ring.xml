@@ -1,0 +1,104 @@
+<?xml version="1.0"?>
+<!-- A series of devices connected in a directional ring. When a device
+receives a message, it punts that message to the next device in the ring, and
+sends a message to the supervisor, which records which device sent it, and
+which "lap" the message is on. Device zero kicks things off.
+
+This test passes if the output file ("test_ring") has nine packets from nine
+devices, and the additional packet used to start things off.
+
+This test fails if any of the devices drop the packet. -->
+<Graphs xmlns="https://poets-project.org/schemas/virtual-graph-schema-v2">
+  <GraphType id="test_ring">
+    <MessageTypes>
+      <MessageType id="dummy"/>
+      <MessageType id="simple">
+        <Message>
+          <Scalar type="uint8_t" name="source"/>
+          <Scalar type="uint8_t" name="count"/>
+        </Message>
+      </MessageType>
+    </MessageTypes>
+    <DeviceTypes>
+      <DeviceType id="normal_device">
+        <Properties>
+          <Scalar type="uint8_t" name="id" default="0"/>
+        </Properties>
+        <State>
+          <Scalar type="uint8_t" name="send" default="0"/>
+          <Scalar type="uint8_t" name="inCount" default="0"/>
+        </State>
+        <ReadyToSend><![CDATA[
+        if (deviceState->send == 1) *readyToSend |= RTS_FLAG_send;
+        ]]></ReadyToSend>
+        <OnCompute><![CDATA[
+        return deviceState->send;  /* Initial packet. */
+        ]]></OnCompute>
+        <InputPin name="dummy" messageTypeId="dummy">
+          <OnReceive><![CDATA[/* Stub */]]></OnReceive>
+        </InputPin>
+        <InputPin name="recv" messageTypeId="simple">
+          <OnReceive><![CDATA[
+          deviceState->inCount = deviceState->inCount + 1;
+          if (deviceState->inCount < 10) deviceState->send = 1;
+          ]]></OnReceive>
+        </InputPin>
+        <OutputPin name="send" messageTypeId="simple">
+          <OnSend><![CDATA[
+          message->source = deviceProperties->id;
+          message->count = deviceState->inCount;
+          deviceState->send = 0;
+          ]]></OnSend>
+        </OutputPin>
+      </DeviceType>
+      <SupervisorDeviceType id="supervisor_device">
+        <Code><![CDATA[
+        #include <stdio.h>
+        ]]></Code>
+        <InputPin name="pull" messageTypeId="simple">
+          <OnReceive><![CDATA[
+          FILE* resultFile = fopen("test_ring", "a");
+          fprintf(resultFile, "Received packet %u from device %u.\n",
+                  message->count, message->source);
+          fclose(resultFile);
+          ]]></OnReceive>
+        </InputPin>
+      </SupervisorDeviceType>
+    </DeviceTypes>
+  </GraphType>
+  <GraphInstance id="test_ring" graphTypeId="test_ring">
+    <DeviceInstances>
+      <DevI id="0" type="normal_device"><P>"id": 0</P><S>"send": 1</S></DevI>
+      <DevI id="1" type="normal_device"><P>"id": 1</P></DevI>
+      <DevI id="2" type="normal_device"><P>"id": 2</P></DevI>
+      <DevI id="3" type="normal_device"><P>"id": 3</P></DevI>
+      <DevI id="4" type="normal_device"><P>"id": 4</P></DevI>
+      <DevI id="5" type="normal_device"><P>"id": 5</P></DevI>
+      <DevI id="6" type="normal_device"><P>"id": 6</P></DevI>
+      <DevI id="7" type="normal_device"><P>"id": 7</P></DevI>
+      <DevI id="8" type="normal_device"><P>"id": 8</P></DevI>
+      <DevI id="9" type="normal_device"><P>"id": 9</P></DevI>
+    </DeviceInstances>
+    <EdgeInstances>
+      <EdgeI path=":pull-0:send"/>
+      <EdgeI path=":pull-1:send"/>
+      <EdgeI path=":pull-2:send"/>
+      <EdgeI path=":pull-3:send"/>
+      <EdgeI path=":pull-4:send"/>
+      <EdgeI path=":pull-5:send"/>
+      <EdgeI path=":pull-6:send"/>
+      <EdgeI path=":pull-7:send"/>
+      <EdgeI path=":pull-8:send"/>
+      <EdgeI path=":pull-9:send"/>
+      <EdgeI path="0:recv-9:send"/>
+      <EdgeI path="1:recv-0:send"/>
+      <EdgeI path="2:recv-1:send"/>
+      <EdgeI path="3:recv-2:send"/>
+      <EdgeI path="4:recv-3:send"/>
+      <EdgeI path="5:recv-4:send"/>
+      <EdgeI path="6:recv-5:send"/>
+      <EdgeI path="7:recv-6:send"/>
+      <EdgeI path="8:recv-7:send"/>
+      <EdgeI path="9:recv-8:send"/>
+    </EdgeInstances>
+</Graphs>
