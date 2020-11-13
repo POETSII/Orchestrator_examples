@@ -1,0 +1,133 @@
+<?xml version="1.0"?>
+<!--
+This XML demonstrates that a supervisor's OnIdle handler is called, sometimes
+multiple times in sequence.
+
+With no normal devices, and a quiescent supervisor device, the Mothership is
+not taxed in any way. As a result, it invokes the OnIdle handler of each
+supervisor in turn, which performs some meaningful work.
+
+In this case, the supervisor plays a very simple game of life, updating roughly
+once each second. The output of the game is written to the file
+"test_supervisor_idle", which should change every second or so.
+-->
+<Graphs xmlns="" appname="test_supervisor_idle">
+  <GraphType id="test_supervisor_idle_type">
+    <DeviceTypes>
+      <SupervisorDeviceType id="">
+        <Code><![CDATA[
+#include <stdio.h>
+#include <unistd.h>
+        ]]></Code>
+        <State><![CDATA[
+uint8_t board[15][15];
+        ]]></State>
+        <OnInit><![CDATA[
+/* All to zero (dead) */
+for (uint8_t outerIndex = 0; outerIndex < 16; outerIndex++)
+    for (uint8_t innerIndex = 0; innerIndex < 16; innerIndex++)
+        board[outerIndex][innerIndex] = 0;
+
+/* Set the lucky few to live, for now (Kok's Galaxy) */
+board[3][3] = 1;
+board[3][4] = 1;
+board[3][5] = 1;
+board[3][6] = 1;
+board[3][7] = 1;
+board[3][8] = 1;
+board[4][3] = 1;
+board[4][4] = 1;
+board[4][5] = 1;
+board[4][6] = 1;
+board[4][7] = 1;
+board[4][8] = 1;
+
+board[3][10] = 1;
+board[4][10] = 1;
+board[5][10] = 1;
+board[6][10] = 1;
+board[7][10] = 1;
+board[8][10] = 1;
+board[3][11] = 1;
+board[4][11] = 1;
+board[5][11] = 1;
+board[6][11] = 1;
+board[7][11] = 1;
+board[8][11] = 1;
+
+board[6][3] = 1;
+board[7][3] = 1;
+board[8][3] = 1;
+board[9][3] = 1;
+board[10][3] = 1;
+board[11][3] = 1;
+board[6][4] = 1;
+board[7][4] = 1;
+board[8][4] = 1;
+board[9][4] = 1;
+board[10][4] = 1;
+board[11][4] = 1;
+
+board[10][6] = 1;
+board[10][7] = 1;
+board[10][8] = 1;
+board[10][9] = 1;
+board[10][10] = 1;
+board[10][11] = 1;
+board[11][6] = 1;
+board[11][7] = 1;
+board[11][8] = 1;
+board[11][9] = 1;
+board[11][10] = 1;
+board[11][11] = 1;
+      ]]></OnInit>
+      <OnIdle><![CDATA[
+uint8_t swapBoard[15][15];
+
+/* Update state, except for those on the boundary (lazy, but they'll always be
+ * zero here) */
+for (uint8_t outerIndex = 1; outerIndex < 15; outerIndex++)
+for (uint8_t innerIndex = 1; innerIndex < 15; innerIndex++)
+{
+    /* Count live neighbours */
+    uint8_t alive = 0;
+    alive += board[outerIndex - 1][innerIndex - 1];
+    alive += board[outerIndex - 1][innerIndex];
+    alive += board[outerIndex - 1][innerIndex + 1];
+    alive += board[outerIndex][innerIndex - 1];
+    alive += board[outerIndex][innerIndex + 1];
+    alive += board[outerIndex + 1][innerIndex - 1];
+    alive += board[outerIndex + 1][innerIndex];
+    alive += board[outerIndex + 1][innerIndex + 1];
+
+    /* Update state on the swap board. */
+    if (alive == 3) swapBoard[outerIndex][innerIndex] = 1;
+    else if (board[outerIndex][innerIndex] == 1 and alive > 1 and alive < 4)
+        swapBoard[outerIndex][innerIndex] = 1;
+    else swapBoard[outerIndex][innerIndex] = 0;
+}
+
+/* Update main board with values from swap board, and write to output file. */
+FILE* outFile = fopen("test_supervisor_idle", "w");
+for (uint8_t outerIndex = 0; outerIndex < 16; outerIndex++)
+{
+    for (uint8_t innerIndex = 0; innerIndex < 16; innerIndex++)
+    {
+        board[outerIndex][innerIndex] = swapBoard[outerIndex][innerIndex];
+        if (board[outerIndex][innerIndex] == 1) fprintf(outFile, "O");
+        else fprintf(outFile, "-");
+    }
+    fprintf(outFile, "\n");
+}
+fclose(outFile);
+
+/* Chill */
+sleep(1);
+      ]]></OnIdle>
+      </SupervisorDeviceType>
+    </DeviceTypes>
+  </GraphType>
+  <GraphInstance id="test_supervisor_idle_instance"
+                 graphTypeId="test_supervisor_idle_type">
+  </GraphInstance>
+</Graphs>
