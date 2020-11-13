@@ -34,7 +34,10 @@ uint32_t id = 0;
 uint32_t tick = 0;
         ]]></State>
         <ReadyToSend><![CDATA[
-if (deviceState->tick < 4294967295)*readyToSend |= RTS_SUPER_IMPLICIT_SEND_FLAG
+if (deviceState->tick < 4294967295)
+{
+    *readyToSend |= RTS_SUPER_IMPLICIT_SEND_FLAG;
+}
         ]]></ReadyToSend>
         <OnDeviceIdle><![CDATA[
 if (deviceState->tick < 4294967295) return 1;
@@ -59,10 +62,10 @@ FILE* resultFile;
 supervisorState->resultFile = fopen("test_ddos_supervisor_packets_processed",
                                     "a");
         ]]></OnInit>
-        <SupervisorInPin name="pull" messageTypeId="simple">
+        <SupervisorInPin id="pull" messageTypeId="simple">
           <OnReceive><![CDATA[
-fprintf(resultFile, "%u,%u\n", message->id, message->content);
-fflush(resultFile);  /* Make it inefficient */
+fprintf(supervisorState->resultFile, "%u,%u\n", message->id, message->content);
+fflush(supervisorState->resultFile);  /* Make it inefficient */
           ]]></OnReceive>
         </SupervisorInPin>
         <OnStop><![CDATA[
