@@ -48,7 +48,7 @@ deviceState->tick = deviceState->tick + 1;
           ]]></OnSend>
         </SupervisorOutPin>
       </DeviceType>
-      <SupervisorDeviceType id="" SupervisorInPin="pull">
+      <SupervisorType id="" SupervisorInPin="pull">
         <Code><![CDATA[
 #include <stdio.h>
         ]]></Code>
@@ -67,7 +67,7 @@ else fputs("1", resultFile);
 fclose(resultFile);
           ]]></OnReceive>
         </SupervisorInPin>
-      </SupervisorDeviceType>
+      </SupervisorType>
     </DeviceTypes>
   </GraphType>
   <GraphInstance id="test_packet_to_supervisor_instance"

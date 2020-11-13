@@ -14,7 +14,7 @@ once each second. The output of the game is written to the file
 <Graphs xmlns="" appname="test_supervisor_idle">
   <GraphType id="test_supervisor_idle_type">
     <DeviceTypes>
-      <SupervisorDeviceType id="">
+      <SupervisorType id="">
         <Code><![CDATA[
 #include <stdio.h>
 #include <unistd.h>
@@ -124,7 +124,7 @@ fclose(outFile);
 /* Chill */
 sleep(1);
       ]]></OnIdle>
-      </SupervisorDeviceType>
+      </SupervisorType>
     </DeviceTypes>
   </GraphType>
   <GraphInstance id="test_supervisor_idle_instance"
