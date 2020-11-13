@@ -18,55 +18,44 @@ different hardware addresses (depending on where they are placed):
  - "0xCC"
 
 -->
-<Graphs xmlns="https://poets-project.org/schemas/virtual-graph-schema-v2">
-  <GraphType id="test_debug_uart">
+<Graphs xmlns="" appname="test_debug_uart">
+  <GraphType id="test_debug_uart_type">
     <!-- Normal devices don't send any messages in this application. -->
     <SharedCode><![CDATA[
-    #include "tinsel.h"
+#include "tinsel.h"
     ]]></SharedCode>
-    <MessageTypes>
-    <MessageType id="dummy"/>
-    </MessageTypes>
-
     <DeviceTypes>
       <DeviceType id="AABB">
-        <State>
-          <Scalar type="uint8_t" name="spoken" default="0"/>
-        </State>
-        <OnCompute><![CDATA[
-        if (deviceState->spoken == 0)
-        {
-            deviceState->spoken = 1;
-            tinselUartTryPut(170);  /* AA */
-            tinselUartTryPut(187);  /* BB */
-        }
-        return 0;
-        ]]></OnCompute>
-        <ReadyToSend><![CDATA[/* Stub */]]></ReadyToSend>
-        <InputPin name="dummy" messageTypeId="dummy">
-          <OnReceive><![CDATA[/* Stub */]]></OnReceive>
-        </InputPin>
+        <State><![CDATA[
+uint8_t spoken = 0;
+        ]]></State>
+        <OnDeviceIdle><![CDATA[
+if (deviceState->spoken == 0)
+{
+    deviceState->spoken = 1;
+    tinselUartTryPut(170);  /* AA */
+    tinselUartTryPut(187);  /* BB */
+}
+return 0;
+        ]]></OnDeviceIdle>
       </DeviceType>
       <DeviceType id="CC">
-        <State>
-          <Scalar type="uint8_t" name="spoken" default="0"/>
-        </State>
-        <OnCompute><![CDATA[
-        if (deviceState->spoken == 0)
-        {
-            deviceState->spoken = 1;
-            tinselUartTryPut(204);  /* CC */
-        }
-        return 0;
-        ]]></OnCompute>
-        <ReadyToSend><![CDATA[/* Stub */]]></ReadyToSend>
-        <InputPin name="dummy" messageTypeId="dummy">
-          <OnReceive><![CDATA[/* Stub */]]></OnReceive>
-        </InputPin>
+        <State><![CDATA[
+uint8_t spoken = 0;
+        ]]></State>
+        <OnDeviceIdle><![CDATA[
+if (deviceState->spoken == 0)
+{
+    deviceState->spoken = 1;
+    tinselUartTryPut(204);  /* CC */
+}
+return 0;
+        ]]></OnDeviceIdle>
       </DeviceType>
     </DeviceTypes>
   </GraphType>
-  <GraphInstance id="test_debug_uart" graphTypeId="test_debug_uart">
+  <GraphInstance id="test_debug_uart_instance"
+                 graphTypeId="test_debug_uart_type">
     <DeviceInstances>
       <DevI id="0" type="AABB"/>
       <DevI id="1" type="AABB"/>

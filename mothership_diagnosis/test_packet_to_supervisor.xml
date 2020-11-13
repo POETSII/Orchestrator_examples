@@ -16,73 +16,64 @@ application. This is achieved via the "tick" property of the normal device,
 which is zero prior to sending the packet, and is non-zero otherwise. The
 ReadyToSend logic only sends a packet if "tick" is zero.
 
-The payload, the uin8_t "content" field in the message, is set to a hardcoded
+The payload, the uint8_t "content" field in the message, is set to a hardcoded
 value. This hardcoded value is checked in the supervisor to determine the test
 result.
 
 The test result is created in the file "test_packet_to_supervisor_result",
 which contains a zero on pass and non-zero on failure.
 -->
-<Graphs xmlns="https://poets-project.org/schemas/virtual-graph-schema-v2">
-  <GraphType id="test_packet_to_supervisor">
+<Graphs xmlns="" appname="test_packet_to_supervisor">
+  <GraphType id="test_packet_to_supervisor_type">
     <MessageTypes>
-      <MessageType id="dummy"/>
-      <MessageType id="simple">
-        <Message>
-          <Scalar type="uint8_t" name="content"/>
-        </Message>
-      </MessageType>
+      <MessageType id="simple"><![CDATA[
+uint8_t content;
+      ]]></MessageType>
     </MessageTypes>
     <DeviceTypes>
       <DeviceType id="normal_device">
-        <State>
-          <Scalar type="uint8_t" name="tick" default="0"/>
-        </State>
+        <State><![CDATA[
+uint8_t tick = 0;
+        ]]></State>
         <ReadyToSend><![CDATA[
-        if (deviceState->tick == 0) *readyToSend |= RTS_FLAG_push;
+if (deviceState->tick == 0) *readyToSend |= RTS_SUPER_IMPLICIT_SEND_FLAG;
         ]]></ReadyToSend>
-        <OnCompute><![CDATA[
-            return !deviceState->tick;
-        ]]></OnCompute>
-        <InputPin name="dummy" messageTypeId="dummy">
-          <OnReceive><![CDATA[/* Stub */]]></OnReceive>
-        </InputPin>
-        <OutputPin name="push" messageTypeId="simple">
+        <OnDeviceIdle><![CDATA[
+return !deviceState->tick;
+        ]]></OnDeviceIdle>
+        <SupervisorOutPin messageTypeId="simple">
           <OnSend><![CDATA[
-          message->content = 170;  /* = 0b10101010 = 0xAA */
-          deviceState->tick = deviceState->tick + 1;
+message->content = 170;  /* = 0b10101010 = 0xAA */
+deviceState->tick = deviceState->tick + 1;
           ]]></OnSend>
-        </OutputPin>
+        </SupervisorOutPin>
       </DeviceType>
-      <SupervisorDeviceType id="supervisor_device">
+      <SupervisorDeviceType id="" SupervisorInPin="pull">
         <Code><![CDATA[
-        #include <stdio.h>
+#include <stdio.h>
         ]]></Code>
-        <InputPin name="pull" messageTypeId="simple">
-          <State>
-            <Scalar type="uint8_t" name="packetCount" default="0"/>
-          </State>
+        <State><![CDATA[
+uint8_t packetCount = 0;
+        ]]></State>
+        <SupervisorInPin id="pull" messageTypeId="simple">
           <OnReceive><![CDATA[
-          FILE* resultFile = fopen("test_packet_to_supervisor_result", "w");
-          if (sEdgeState->packetCount == 0)
-          {
-              if (message->content == 170) fputs("0", resultFile);
-              else fputs("1", resultFile);
-          }
-          else fputs("1", resultFile);
-          fclose(resultFile);
+FILE* resultFile = fopen("test_packet_to_supervisor_result", "w");
+if (supervisorState->packetCount == 0)
+{
+    if (message->content == 170) fputs("0", resultFile);
+    else fputs("1", resultFile);
+}
+else fputs("1", resultFile);
+fclose(resultFile);
           ]]></OnReceive>
-        </InputPin>
+        </SupervisorInPin>
       </SupervisorDeviceType>
     </DeviceTypes>
   </GraphType>
-  <GraphInstance id="test_packet_to_supervisor"
-                 graphTypeId="test_packet_to_supervisor">
+  <GraphInstance id="test_packet_to_supervisor_instance"
+                 graphTypeId="test_packet_to_supervisor_type">
     <DeviceInstances>
       <DevI id="0" type="normal_device"/>
     </DeviceInstances>
-    <EdgeInstances>
-      <EdgeI path=":pull-0:push"/>
-    </EdgeInstances>
   </GraphInstance>
 </Graphs>
