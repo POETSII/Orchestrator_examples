@@ -57,17 +57,21 @@ uint8_t id = 255;
         ]]></Properties>
         <State><![CDATA[
 uint8_t sendRight = 0;
+uint8_t supSendRight = 0;
 uint8_t sendLeft = 0;
+uint8_t supSendLeft = 0;
         ]]></State>
         <ReadyToSend><![CDATA[
 if (deviceState->sendRight == 1)
 {
     *readyToSend |= RTS_FLAG_send_right;
-    *readyToSend |= RTS_SUPER_IMPLICIT_SEND_FLAG;
 }
 if (deviceState->sendLeft == 1)
 {
     *readyToSend |= RTS_FLAG_send_left;
+}
+if (deviceState->supSendRight == 1 || deviceState->supSendLeft == 1)
+{
     *readyToSend |= RTS_SUPER_IMPLICIT_SEND_FLAG;
 }
         ]]></ReadyToSend>
@@ -78,8 +82,16 @@ return deviceState->sendRight;  /* Initial packet from N0. */
           <OnReceive><![CDATA[
 if (message->content == 47)
 {
-    if (deviceProperties->id == 2) deviceState->sendLeft = 1;
-    else deviceState->sendRight = 1;
+    if (deviceProperties->id == 2) 
+    {
+        deviceState->sendLeft = 1;
+        deviceState->supSendLeft = 1;
+    }
+    else
+    {
+        deviceState->sendRight = 1;
+        deviceState->supSendRight = 1;
+    }
 }
           ]]></OnReceive>
         </InputPin>
@@ -87,7 +99,11 @@ if (message->content == 47)
           <OnReceive><![CDATA[
 if (message->content == 208)
 {
-    if (deviceProperties->id != 0) deviceState->sendLeft = 1;
+    if (deviceProperties->id != 0)
+    {
+        deviceState->sendLeft = 1;
+        deviceState->supSendLeft = 1;
+    }
 }
           ]]></OnReceive>
         </InputPin>
@@ -95,31 +111,31 @@ if (message->content == 208)
           <OnSend><![CDATA[
 message->id = deviceProperties->id;
 message->content = 208;
-/* Don't clear sendLeft - the supervisor output pin will do it (it's called
- * last) */
+
+deviceState->sendLeft = 0;
           ]]></OnSend>
         </OutputPin>
         <OutputPin name="send_right" messageTypeId="simple">
           <OnSend><![CDATA[
 message->id = deviceProperties->id;
 message->content = 47;
-/* Don't clear sendRight - the supervisor output pin will do it (it's called
- * last) */
+
+deviceState->sendRight = 0;
           ]]></OnSend>
         </OutputPin>
         <SupervisorOutPin messageTypeId="simple">
           <OnSend><![CDATA[
-if (deviceState->sendLeft == 1)
+if (deviceState->supSendLeft == 1)
 {
     message->id = deviceProperties->id;
     message->content = 208;
-    deviceState->sendLeft = 0;
+    deviceState->supSendLeft = 0;
 }
-else if (deviceState->sendRight == 1)
+else if (deviceState->supSendRight == 1)
 {
     message->id = deviceProperties->id;
     message->content = 47;
-    deviceState->sendRight = 0;
+    deviceState->supSendRight = 0;
 }
           ]]></OnSend>
         </SupervisorOutPin>
@@ -198,7 +214,7 @@ uint8_t secondSent[3] = {0, 0, 0};
   <GraphInstance id="test_packet_chain_to_supervisor_instance"
                  graphTypeId="test_packet_chain_to_supervisor_type">
     <DeviceInstances>
-      <DevI id="0" type="normal_device" P="0" S="1"/>
+      <DevI id="0" type="normal_device" P="0" S="1,1"/>
       <DevI id="1" type="normal_device" P="1"/>
       <DevI id="2" type="normal_device" P="2"/>
     </DeviceInstances>
