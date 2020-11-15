@@ -63,12 +63,12 @@ uint8_t sendLeft = 0;
 if (deviceState->sendRight == 1)
 {
     *readyToSend |= RTS_FLAG_send_right;
-    *readyToSend |= RTS_SUPER_IMPLICIT_SEND_FLAG
+    *readyToSend |= RTS_SUPER_IMPLICIT_SEND_FLAG;
 }
 if (deviceState->sendLeft == 1)
 {
     *readyToSend |= RTS_FLAG_send_left;
-    *readyToSend |= RTS_SUPER_IMPLICIT_SEND_FLAG
+    *readyToSend |= RTS_SUPER_IMPLICIT_SEND_FLAG;
 }
         ]]></ReadyToSend>
         <OnDeviceIdle><![CDATA[
@@ -130,8 +130,8 @@ else if (deviceState->sendRight == 1)
         ]]></Code>
         <State><![CDATA[
 uint8_t failed = 0;
-uint8_t[] firstSent = {0, 0, 0};
-uint8_t[] secondSent = {0, 0, 0};
+uint8_t firstSent[3] = {0, 0, 0};
+uint8_t secondSent[3] = {0, 0, 0};
         ]]></State>
         <SupervisorInPin id="pull" messageTypeId="simple">
           <OnReceive><![CDATA[
@@ -157,31 +157,31 @@ uint8_t[] secondSent = {0, 0, 0};
            * failing fast. If not, set that we've received the message. */
           if (message->content == 47)
           {
-              if (supervisorState->payloads[message->id].firstSent == 1)
+              if (supervisorState->firstSent[message->id] == 1)
                   {fputs("1", resultFile); supervisorState->failed = 1;}
-              else supervisorState->payloads[message->id].firstSent = 1;
+              else supervisorState->firstSent[message->id] = 1;
           }
           else if (message->content == 208)
           {
-              if (supervisorState->payloads[message->id].secondSent == 1)
+              if (supervisorState->secondSent[message->id] == 1)
                   {fputs("1", resultFile); supervisorState->failed = 1;}
-              else supervisorState->payloads[message->id].secondSent = 1;
+              else supervisorState->secondSent[message->id] = 1;
           }
 
           /* Check a failure condition. */
-          if (supervisorState->payloads[0].secondSent == 1 or
-              supervisorState->payloads[2].firstSent == 1) {
+          if (supervisorState->secondSent[0] == 1 or
+              supervisorState->firstSent[2] == 1) {
               fputs("1", resultFile);
               supervisorState->failed = 1;
           }
 
           /* Check the pass condition. */
-          if (supervisorState->payloads[0].firstSent == 1 and
-              supervisorState->payloads[0].secondSent == 0 and
-              supervisorState->payloads[1].firstSent == 1 and
-              supervisorState->payloads[1].secondSent == 1 and
-              supervisorState->payloads[2].firstSent == 0 and
-              supervisorState->payloads[2].secondSent == 1)
+          if (supervisorState->firstSent[0] == 1 and
+              supervisorState->secondSent[0] == 0 and
+              supervisorState->firstSent[1] == 1 and
+              supervisorState->secondSent[1] == 1 and
+              supervisorState->firstSent[2] == 0 and
+              supervisorState->secondSent[2] == 1)
            {
                fputs("0", resultFile);
            }
