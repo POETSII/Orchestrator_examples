@@ -23,7 +23,7 @@ once each second. The output of the game is written to the file
 #include <unistd.h>
         ]]></Code>
         <State><![CDATA[
-uint8_t board[15][15];
+uint8_t board[16][16];
         ]]></State>
         <OnInit><![CDATA[
 /* All to zero (dead) */
@@ -85,10 +85,10 @@ supervisorState->board[11][10] = 1;
 supervisorState->board[11][11] = 1;
       ]]></OnInit>
       <OnSupervisorIdle><![CDATA[
-uint8_t swapBoard[15][15];
+uint8_t swapBoard[16][16];
 
 /* Update state, except for those on the boundary (lazy, but they'll always be
- * zero here) */
+ * ignored here) */
 for (uint8_t outerIndex = 1; outerIndex < 15; outerIndex++)
 for (uint8_t innerIndex = 1; innerIndex < 15; innerIndex++)
 {
