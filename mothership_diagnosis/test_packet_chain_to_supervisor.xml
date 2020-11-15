@@ -70,7 +70,7 @@ if (deviceState->sendLeft == 1)
 {
     *readyToSend |= RTS_FLAG_send_left;
 }
-if (deviceState->supSendRight == 1 || deviceState->supSendLeft == 1)
+if (deviceState->supSendRight == 1 or deviceState->supSendLeft == 1)
 {
     *readyToSend |= RTS_SUPER_IMPLICIT_SEND_FLAG;
 }
@@ -82,7 +82,7 @@ return deviceState->sendRight;  /* Initial packet from N0. */
           <OnReceive><![CDATA[
 if (message->content == 47)
 {
-    if (deviceProperties->id == 2) 
+    if (deviceProperties->id == 2)
     {
         deviceState->sendLeft = 1;
         deviceState->supSendLeft = 1;
@@ -214,7 +214,7 @@ uint8_t secondSent[3] = {0, 0, 0};
   <GraphInstance id="test_packet_chain_to_supervisor_instance"
                  graphTypeId="test_packet_chain_to_supervisor_type">
     <DeviceInstances>
-      <DevI id="0" type="normal_device" P="0" S="1,1"/>
+      <DevI id="0" type="normal_device" P="0" S="1, 1"/>
       <DevI id="1" type="normal_device" P="1"/>
       <DevI id="2" type="normal_device" P="2"/>
     </DeviceInstances>
