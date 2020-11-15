@@ -113,9 +113,9 @@ for (uint8_t innerIndex = 1; innerIndex < 15; innerIndex++)
 
 /* Update main board with values from swap board, and write to output file. */
 FILE* outFile = fopen("test_supervisor_idle", "w");
-for (uint8_t outerIndex = 0; outerIndex < 16; outerIndex++)
+for (uint8_t outerIndex = 1; outerIndex < 15; outerIndex++)
 {
-    for (uint8_t innerIndex = 0; innerIndex < 16; innerIndex++)
+    for (uint8_t innerIndex = 1; innerIndex < 15; innerIndex++)
     {
         supervisorState->board[outerIndex][innerIndex] = \
             swapBoard[outerIndex][innerIndex];
