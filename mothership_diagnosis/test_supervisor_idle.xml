@@ -10,6 +10,11 @@ supervisor in turn, which performs some meaningful work.
 In this case, the supervisor plays a very simple game of life, updating roughly
 once each second. The output of the game is written to the file
 "test_supervisor_idle", which should change every second or so.
+
+Mark watches its progress with `watch -n 0.1 cat bin/test_supervisor_idle`.
+
+If you want to really tax the hardware, get rid of the `sleep(1)` and some of
+the file I/O.
 -->
 <Graphs xmlns="" appname="test_supervisor_idle">
   <GraphType id="test_supervisor_idle_type">
@@ -22,13 +27,19 @@ once each second. The output of the game is written to the file
 #include <stdio.h>
 #include <unistd.h>
         ]]></Code>
+        <Properties><![CDATA[
+uint8_t board[15][15];
+uint32_t iteration = 0;
+const char* headerName = "Kok's Galaxy (Conway Life): Period-8 Oscillator";
+        ]]></Properties>
         <State><![CDATA[
 uint8_t board[16][16];
+uint32_t iteration = 0;
         ]]></State>
         <OnInit><![CDATA[
 /* All to zero (dead) */
-for (uint8_t outerIndex = 0; outerIndex < 16; outerIndex++)
-    for (uint8_t innerIndex = 0; innerIndex < 16; innerIndex++)
+for (uint8_t outerIndex = 0; outerIndex < 15; outerIndex++)
+    for (uint8_t innerIndex = 0; innerIndex < 15; innerIndex++)
         supervisorState->board[outerIndex][innerIndex] = 0;
 
 /* Set the lucky few to live, for now (Kok's Galaxy) */
@@ -89,8 +100,8 @@ uint8_t swapBoard[16][16];
 
 /* Update state, except for those on the boundary (lazy, but they'll always be
  * ignored here) */
-for (uint8_t outerIndex = 1; outerIndex < 15; outerIndex++)
-for (uint8_t innerIndex = 1; innerIndex < 15; innerIndex++)
+for (uint8_t outerIndex = 1; outerIndex < 14; outerIndex++)
+for (uint8_t innerIndex = 1; innerIndex < 14; innerIndex++)
 {
     /* Count live neighbours */
     uint8_t alive = 0;
@@ -111,25 +122,36 @@ for (uint8_t innerIndex = 1; innerIndex < 15; innerIndex++)
     else swapBoard[outerIndex][innerIndex] = 0;
 }
 
-/* Update main board with values from swap board, and write to output file. */
-FILE* outFile = fopen("test_supervisor_idle", "w");
-for (uint8_t outerIndex = 1; outerIndex < 15; outerIndex++)
+/* Update main board with values from swap board. */
+for (uint8_t outerIndex = 1; outerIndex < 14; outerIndex++)
+for (uint8_t innerIndex = 1; innerIndex < 14; innerIndex++)
 {
-    for (uint8_t innerIndex = 1; innerIndex < 15; innerIndex++)
+    supervisorState->board[outerIndex][innerIndex] =
+        swapBoard[outerIndex][innerIndex];
+}
+
+/* Write to output file. */
+FILE* outFile = fopen("test_supervisor_idle", "w");
+for (uint8_t outerIndex = 0; outerIndex < 15; outerIndex++)
+{
+    for (uint8_t innerIndex = 0; innerIndex < 15; innerIndex++)
     {
-        supervisorState->board[outerIndex][innerIndex] = \
-            swapBoard[outerIndex][innerIndex];
         if (supervisorState->board[outerIndex][innerIndex] == 1)
         {
             fprintf(outFile, "O");
         }
         else fprintf(outFile, "-");
     }
+    if (outerIndex == 6) fprintf(outFile, " %s",
+                                 supervisorProperties->headerName);
+    if (outerIndex == 7) fprintf(outFile, " Iteration: %u",
+                                 supervisorState->iteration);
     fprintf(outFile, "\n");
 }
 fclose(outFile);
 
 /* Chill */
+supervisorState->iteration++;
 sleep(1);
       ]]></OnSupervisorIdle>
       </SupervisorType>
