@@ -34,20 +34,20 @@ uint32_t id = 0;
 uint32_t tick = 0;
         ]]></State>
         <ReadyToSend><![CDATA[
-if (deviceState->tick < 4294967295)
+if (DEVICESTATE(tick) < 4294967295)
 {
-    *readyToSend |= RTS_SUPER_IMPLICIT_SEND_FLAG;
+    RTSSUP();
 }
         ]]></ReadyToSend>
         <OnDeviceIdle><![CDATA[
-if (deviceState->tick < 4294967295) return 1;
+if (DEVICESTATE(tick) < 4294967295) return 1;
 else return 0;
         ]]></OnDeviceIdle>
         <SupervisorOutPin messageTypeId="simple">
           <OnSend><![CDATA[
-message->id = deviceProperties->id;
-message->content = deviceState->tick;
-deviceState->tick = deviceState->tick + 1;
+PKT(id) = DEVICEPROPERTIES(id);
+PKT(content) = DEVICESTATE(tick);
+DEVICESTATE(tick) = DEVICESTATE(tick) + 1;
           ]]></OnSend>
         </SupervisorOutPin>
       </DeviceType>
@@ -59,16 +59,16 @@ deviceState->tick = deviceState->tick + 1;
 FILE* resultFile;
         ]]></State>
         <OnInit><![CDATA[
-supervisorState->resultFile = fopen("test_ddos_supervisor_packets_processed", "a");
+SUPSTATE(resultFile) = fopen("test_ddos_supervisor_packets_processed", "a");
         ]]></OnInit>
         <SupervisorInPin id="pull" messageTypeId="simple">
           <OnReceive><![CDATA[
-fprintf(supervisorState->resultFile, "%u,%u\n", message->id, message->content);
-fflush(supervisorState->resultFile);  /* Make it inefficient */
+fprintf(SUPSTATE(resultFile), "%u,%u\n", PKT(id), PKT(content));
+fflush(SUPSTATE(resultFile));  /* Make it inefficient */
           ]]></OnReceive>
         </SupervisorInPin>
         <OnStop><![CDATA[
-fclose(supervisorState->resultFile);
+fclose(SUPSTATE(resultFile));
         ]]></OnStop>
       </SupervisorType>
     </DeviceTypes>

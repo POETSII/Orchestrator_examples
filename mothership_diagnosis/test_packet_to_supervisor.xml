@@ -36,15 +36,15 @@ uint8_t content;
 uint8_t tick = 0;
         ]]></State>
         <ReadyToSend><![CDATA[
-if (deviceState->tick == 0) *readyToSend |= RTS_SUPER_IMPLICIT_SEND_FLAG;
+if (DEVICESTATE(tick) == 0) RTSSUP();
         ]]></ReadyToSend>
         <OnDeviceIdle><![CDATA[
-return !deviceState->tick;
+return !DEVICESTATE(tick);
         ]]></OnDeviceIdle>
         <SupervisorOutPin messageTypeId="simple">
           <OnSend><![CDATA[
-message->content = 170;  /* = 0b10101010 = 0xAA */
-deviceState->tick = deviceState->tick + 1;
+PKT(content) = 170;  /* = 0b10101010 = 0xAA */
+DEVICESTATE(tick) = DEVICESTATE(tick) + 1;
           ]]></OnSend>
         </SupervisorOutPin>
       </DeviceType>
@@ -58,9 +58,9 @@ uint8_t packetCount = 0;
         <SupervisorInPin id="pull" messageTypeId="simple">
           <OnReceive><![CDATA[
 FILE* resultFile = fopen("test_packet_to_supervisor_result", "w");
-if (supervisorState->packetCount == 0)
+if (SUPSTATE(packetCount) == 0)
 {
-    if (message->content == 170) fputs("0", resultFile);
+    if (PKT(content) == 170) fputs("0", resultFile);
     else fputs("1", resultFile);
 }
 else fputs("1", resultFile);
