@@ -59,8 +59,7 @@ deviceState->tick = deviceState->tick + 1;
 FILE* resultFile;
         ]]></State>
         <OnInit><![CDATA[
-supervisorState->resultFile = fopen("test_ddos_supervisor_packets_processed",
-                                    "a");
+supervisorState->resultFile = fopen("test_ddos_supervisor_packets_processed", "a");
         ]]></OnInit>
         <SupervisorInPin id="pull" messageTypeId="simple">
           <OnReceive><![CDATA[
