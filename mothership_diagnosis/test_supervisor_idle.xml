@@ -105,14 +105,14 @@ for (uint8_t innerIndex = 1; innerIndex < 14; innerIndex++)
 {
     /* Count live neighbours */
     uint8_t alive = 0;
-    alive += supervisorState->board[outerIndex - 1][innerIndex - 1];
-    alive += supervisorState->board[outerIndex - 1][innerIndex];
-    alive += supervisorState->board[outerIndex - 1][innerIndex + 1];
-    alive += supervisorState->board[outerIndex][innerIndex - 1];
-    alive += supervisorState->board[outerIndex][innerIndex + 1];
-    alive += supervisorState->board[outerIndex + 1][innerIndex - 1];
-    alive += supervisorState->board[outerIndex + 1][innerIndex];
-    alive += supervisorState->board[outerIndex + 1][innerIndex + 1];
+    alive += supervisorState->board[outerIndex-1][innerIndex-1];
+    alive += supervisorState->board[outerIndex-1][innerIndex];
+    alive += supervisorState->board[outerIndex-1][innerIndex+1];
+    alive += supervisorState->board[outerIndex][innerIndex-1];
+    alive += supervisorState->board[outerIndex][innerIndex+1];
+    alive += supervisorState->board[outerIndex+1][innerIndex-1];
+    alive += supervisorState->board[outerIndex+1][innerIndex];
+    alive += supervisorState->board[outerIndex+1][innerIndex+1];
 
     /* Update state on the swap board. */
     if (alive == 3) swapBoard[outerIndex][innerIndex] = 1;
