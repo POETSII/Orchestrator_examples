@@ -23,9 +23,12 @@ bool posted = false;
 Super::post("OnInit");
         ]]></OnInit>
         <OnSupervisorIdle><![CDATA[
-if (!supervisorState->posted) Super::post("OnIdle");
-supervisorState->posted = true;
-Super::stop_application();
+if (!supervisorState->posted)
+{
+    Super::post("OnIdle");
+    Super::stop_application();
+    supervisorState->posted = true;
+}
         ]]></OnSupervisorIdle>
         <OnStop><![CDATA[
 Super::post("OnStop");
