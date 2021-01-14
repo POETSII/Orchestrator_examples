@@ -43,7 +43,7 @@ uint32_t packetCount = 0;
         ]]></State>
         <SupervisorInPin id="pull" messageTypeId="simple">
           <OnReceive><![CDATA[
-if (supervisorState->packetCount == 0) SuperApi::stop_application();
+if (supervisorState->packetCount == 0) Super::stop_application();
 supervisorState->packetCount++;
           ]]></OnReceive>
         </SupervisorInPin>
