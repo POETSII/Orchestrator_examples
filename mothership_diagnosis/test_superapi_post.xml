@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<!--
+This XML demonstrates the post functionality of the Supervisor API.
+
+If completed appropriately, three messages should be produced, each exactly
+once:
+
+ - "OnInit"
+ - "OnIdle"
+ - "OnStop"
+
+The application should also stop itself.
+-->
+<Graphs xmlns="" appname="test_superapi_post">
+  <GraphType id="test_superapi_post_type">
+    <DeviceTypes>
+      <DeviceType id="stub"/>
+      <SupervisorType id="" SupervisorInPin="pull">
+        <State><![CDATA[
+bool posted = false;
+        ]]></State>
+        <OnInit><![CDATA[
+Super::post("OnInit");
+        ]]></OnInit>
+        <OnSupervisorIdle><![CDATA[
+if (!supervisorState->posted) Super::post("OnIdle");
+supervisorState->posted = true;
+Super::stop_application();
+        ]]></OnSupervisorIdle>
+        <OnStop><![CDATA[
+Super::post("OnStop");
+        ]]></OnStop>
+      </SupervisorType>
+    </DeviceTypes>
+  </GraphType>
+  <GraphInstance id="test_superapi_post_instance"
+                 graphTypeId="test_superapi_post_type">
+    <DeviceInstances>
+      <DevI id="0" type="stub"/>
+    </DeviceInstances>
+  </GraphInstance>
+</Graphs>
