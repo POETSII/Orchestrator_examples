@@ -2,6 +2,9 @@
 <!--
 This XML demonstrates safe directory creation using the Supervisor API.
 
+If you want to mess with the root app_output directory, command (in the
+Orchestrator prompt): `path /mout = "yes/` (read the documentation).
+
 If completed appropriately, the following directories should be produced
 (assuming default Orchestrator configuration):
 
@@ -28,12 +31,20 @@ contains a zero on pass and non-zero on failure.
         <OnInit><![CDATA[
 FILE* resultFile = fopen("test_superapi_dirs", "w");
 
+std::string invalidDir = Super::get_output_directory(
+    "/../../../../../../../../../../../../obviously_invalid_i_hope");
+if (invalidDir != "") fputs("1", resultFile);
+
 std::string dir1 = Super::get_output_directory();
+if (dir1 == "") fputs("2", resultFile);
+
 std::string dir2 = Super::get_output_directory("_octopus");
+if (dir2 == "") fputs("3", resultFile);
+
 FILE* fout = fopen((dir2 + "/squid.txt").c_str(), "w");
 if(fout == NULL)
 {
-    fputs("1", resultFile);
+    fputs("4", resultFile);
 }
 else
 {
