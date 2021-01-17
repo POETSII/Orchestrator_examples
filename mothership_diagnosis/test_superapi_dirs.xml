@@ -26,7 +26,7 @@ contains a zero on pass and non-zero on failure.
 #include <stdio.h>
         ]]></Code>
         <OnInit><![CDATA[
-FILE* resultFile = fopen("test_packet_to_supervisor_result", "w");
+FILE* resultFile = fopen("test_superapi_dirs", "w");
 
 std::string dir1 = Super::get_output_directory();
 std::string dir2 = Super::get_output_directory("_octopus");
