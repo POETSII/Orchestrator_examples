@@ -42,7 +42,8 @@ unsigned long long maximum;  /* The prime number will be smaller than this. */
 void Find_greatest_prime_number_less_than_max(unsigned long long max,
                                               unsigned long long& output)
 {
-    /* Holds primes. */
+    /* Holds whether or not the value corresponding to the index in the vector
+     * is prime. */
     std::vector<bool> primes(max, true);
 
     /* The sieve itself. */
