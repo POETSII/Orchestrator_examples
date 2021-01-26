@@ -1,0 +1,70 @@
+<?xml version="1.0"?>
+<!--
+This XML demonstrates the stop_application functionality of the Supervisor
+API. Specifically, it demonstrates that:
+
+ - A supervisor device can request an application to stop.
+
+ - The application is not stopped immediately - other packets may be processed
+   shortly after the request is made.
+
+The test result is created in the file "test_superapi_stop_result", which
+contains a zero on pass and non-zero on failure. The file
+"test_superapi_stop_spam" contains numbers to illustrate how many packets are
+received after the stop request is made.
+-->
+<Graphs xmlns="" appname="test_superapi_stop">
+  <GraphType id="test_superapi_stop_type">
+    <MessageTypes>
+      <MessageType id="simple"><![CDATA[
+/* Intentionally blank. */
+      ]]></MessageType>
+    </MessageTypes>
+    <DeviceTypes>
+      <DeviceType id="spammer">
+        <ReadyToSend><![CDATA[
+*readyToSend |= RTS_SUPER_IMPLICIT_SEND_FLAG;
+        ]]></ReadyToSend>
+        <OnDeviceIdle><![CDATA[
+return 1;
+        ]]></OnDeviceIdle>
+        <SupervisorOutPin messageTypeId="simple">
+          <OnSend><![CDATA[
+/* Intentionally blank. */
+          ]]></OnSend>
+        </SupervisorOutPin>
+      </DeviceType>
+      <SupervisorType id="" SupervisorInPin="pull">
+        <Code><![CDATA[
+#include <stdio.h>
+        ]]></Code>
+        <State><![CDATA[
+uint32_t packetCount = 0;
+        ]]></State>
+        <SupervisorInPin id="pull" messageTypeId="simple">
+          <OnReceive><![CDATA[
+if (supervisorState->packetCount == 0) Super::stop_application();
+supervisorState->packetCount++;
+          ]]></OnReceive>
+        </SupervisorInPin>
+        <OnStop><![CDATA[
+FILE* resultFile = fopen("test_superapi_stop_result", "w");
+fputs("0", resultFile);
+fclose(resultFile);
+
+FILE* spamFile = fopen("test_superapi_stop_spam", "w");
+fprintf(spamFile,
+        "%u packets were processed before this application was stopped.\n",
+        supervisorState->packetCount);
+fclose(spamFile);
+        ]]></OnStop>
+      </SupervisorType>
+    </DeviceTypes>
+  </GraphType>
+  <GraphInstance id="test_superapi_stop_instance"
+                 graphTypeId="test_superapi_stop_type">
+    <DeviceInstances>
+      <DevI id="0" type="spammer"/>
+    </DeviceInstances>
+  </GraphInstance>
+</Graphs>
