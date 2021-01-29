@@ -1,0 +1,114 @@
+<?xml version="1.0"?>
+<!--
+This XML demonstrates that:
+
+ - A normal device can send a single packet to the application's supervisor
+   device when the application is started.
+
+ - The Supervisor can reply to this packet .
+
+ - A normal device can then send another packet, starting the cycle again.
+ 
+ - This repeats until the normal device has sent 10 pings
+-->
+<Graphs xmlns="" appname="test_reply_from_supervisor">
+  <GraphType id="test_reply_from_supervisor_type">
+    <SharedCode><![CDATA[
+      #include <stdlib.h>
+      #include <cmath>
+    ]]></SharedCode>
+    
+    <MessageTypes>
+      <MessageType id="ping"><![CDATA[
+        uint32_t pingCnt;
+      ]]></MessageType>
+    </MessageTypes>
+    
+    <DeviceTypes>
+      <DeviceType id="normal">
+        <Properties><![CDATA[
+            uint32_t pingCntMax = 10;
+        ]]></Properties>
+        <State><![CDATA[
+            uint32_t pingCnt = 0;
+            uint32_t pingPend = 1;
+            uint32_t refractory = 0;
+            uint32_t refractoryEnter = 0;
+            uint32_t refractoryExit = 0;
+        ]]></State>
+        
+        <SharedCode><![CDATA[
+            #include "tinsel.h"
+
+            // send a reply after a second or so
+            const uint32_t refractoryPeriod = (TinselClockFreq * 1000000);  
+        ]]></SharedCode>
+                  
+        <ReadyToSend><![CDATA[
+            if((DEVICESTATE(pingPend) > 0) && (DEVICESTATE(refractory) == 0))
+            {
+            RTSSUP();
+            }
+        ]]></ReadyToSend>
+        
+        <OnDeviceIdle><![CDATA[
+            // Check to see if the refractory period is over
+            uint32_t cycles = tinselCycleCount();
+            if((cycles - deviceState->refractoryEnter) 
+                > refractoryPeriod)
+            {
+              deviceState->refractory = 0;
+              deviceState->refractoryExit = cycles;
+            }
+
+            return 1;
+        ]]></OnDeviceIdle>
+        
+        <SupervisorOutPin messageTypeId="ping">
+          <OnSend><![CDATA[
+            uint32_t cycles = tinselCycleCount();
+            
+            PKT(pingCnt) = DEVICESTATE(pingCnt)++;
+            
+            DEVICESTATE(refractory) = 1;
+            DEVICESTATE(refractoryEnter) = cycles;
+            
+            DEVICESTATE(pingPend) = 0;
+            
+          ]]></OnSend>
+        </SupervisorOutPin>
+        
+        <SupervisorInPin messageTypeId="ping">
+          <OnReceive><![CDATA[
+            if(DEVICESTATE(pingCnt) < DEVICEPROPERTIES(pingCntMax))
+            {
+                DEVICESTATE(pingPend) = 1;
+            }
+          ]]></OnReceive>
+        </SupervisorInPin>
+      </DeviceType>
+      
+      <SupervisorType id="supervisorNode">
+        <State><![CDATA[
+          uint64_t pingCnt = 0;
+        ]]></State>
+        
+        <SupervisorInPin id="pingIn" messageTypeId="ping">
+          <OnReceive><![CDATA[
+            std::cout << "Ping RX: " << PKT(pingCnt);
+            std::cout << std::endl;
+            
+            RPLY(pingCnt) = PKT(pingCnt);
+            RTSRPLY();
+          ]]></OnReceive>
+        </SupervisorInPin>
+      </SupervisorType>
+      
+    </DeviceTypes>
+   </GraphType>
+  <GraphInstance id="test_reply_from_supervisor_inst" graphTypeId="test_reply_from_supervisor_type">
+    <DeviceInstances>
+      <DevI id="s0000" type="normal"/>
+    </DeviceInstances>
+  </GraphInstance>
+</Graphs>
