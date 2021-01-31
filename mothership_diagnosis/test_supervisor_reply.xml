@@ -14,7 +14,10 @@ This XML demonstrates that:
    Super::stop_application().
    
  - The Supervisor writes exceptions and a results summary to supreply.txt in the
-   execution directory.
+   execution directory. In a successful test, there should be one line:
+  
+       Last packet received. Expected: <COUNT> packets 	Got: <COUNT> packets.
+   where <COUNT> is equal to GlobalProperties->pingCntMax plus one.
 -->
 <Graphs xmlns="" appname="test_reply_from_supervisor">
   <GraphType id="test_reply_from_supervisor_type">
