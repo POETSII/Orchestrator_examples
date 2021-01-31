@@ -9,14 +9,18 @@ This XML demonstrates that:
 
  - A normal device can then send another packet, starting the cycle again.
  
- - This repeats until the normal device has sent 10 pings
+ - This repeats until the Supervisor receives a ping with an index greater than
+   GlobalProperties->pingCntMax. When this occurs, the Supervisor calls 
+   Super::stop_application().
+   
+ - The Supervisor writes exceptions and a results summary to supreply.txt in the
+   execution directory.
 -->
 <Graphs xmlns="" appname="test_reply_from_supervisor">
   <GraphType id="test_reply_from_supervisor_type">
-    <SharedCode><![CDATA[
-      #include <stdlib.h>
-      #include <cmath>
-    ]]></SharedCode>
+    <Properties><![CDATA[
+        uint32_t pingCntMax = 10;
+    ]]></Properties>
     
     <MessageTypes>
       <MessageType id="ping"><![CDATA[
@@ -26,82 +30,86 @@ This XML demonstrates that:
     
     <DeviceTypes>
       <DeviceType id="normal">
-        <Properties><![CDATA[
-            uint32_t pingCntMax = 10;
-        ]]></Properties>
         <State><![CDATA[
             uint32_t pingCnt = 0;
             uint32_t pingPend = 1;
-            uint32_t refractory = 0;
-            uint32_t refractoryEnter = 0;
-            uint32_t refractoryExit = 0;
         ]]></State>
-        
-        <SharedCode><![CDATA[
-            #include "tinsel.h"
-
-            // send a reply after a second or so
-            const uint32_t refractoryPeriod = (TinselClockFreq * 1000000);  
-        ]]></SharedCode>
                   
         <ReadyToSend><![CDATA[
-            if((DEVICESTATE(pingPend) > 0) && (DEVICESTATE(refractory) == 0))
-            {
-            RTSSUP();
-            }
+            if(DEVICESTATE(pingPend) > 0) RTSSUP();
         ]]></ReadyToSend>
-        
-        <OnDeviceIdle><![CDATA[
-            // Check to see if the refractory period is over
-            uint32_t cycles = tinselCycleCount();
-            if((cycles - deviceState->refractoryEnter) 
-                > refractoryPeriod)
-            {
-              deviceState->refractory = 0;
-              deviceState->refractoryExit = cycles;
-            }
-
-            return 1;
-        ]]></OnDeviceIdle>
         
         <SupervisorOutPin messageTypeId="ping">
           <OnSend><![CDATA[
-            uint32_t cycles = tinselCycleCount();
-            
             PKT(pingCnt) = DEVICESTATE(pingCnt)++;
             
-            DEVICESTATE(refractory) = 1;
-            DEVICESTATE(refractoryEnter) = cycles;
-            
             DEVICESTATE(pingPend) = 0;
-            
           ]]></OnSend>
         </SupervisorOutPin>
         
         <SupervisorInPin messageTypeId="ping">
           <OnReceive><![CDATA[
-            if(DEVICESTATE(pingCnt) < DEVICEPROPERTIES(pingCntMax))
-            {
-                DEVICESTATE(pingPend) = 1;
-            }
+            DEVICESTATE(pingPend) = 1;
           ]]></OnReceive>
         </SupervisorInPin>
       </DeviceType>
       
       <SupervisorType id="supervisorNode">
         <State><![CDATA[
-          uint64_t pingCnt = 0;
+          int64_t lastPing = -1;
+          int64_t pingCnt = 0;
         ]]></State>
+        
+        <Code><![CDATA[
+          #include <fstream>
+          #include <iostream>
+          #include <sstream>
+          #include <string>
+          #include <cstdio>
+          #include <iomanip>
+
+          std::ofstream oFile;
+        ]]></Code>
+        
+        <OnInit><![CDATA[
+            oFile.open("supreply.txt");
+        ]]></OnInit>
         
         <SupervisorInPin id="pingIn" messageTypeId="ping">
           <OnReceive><![CDATA[
-            std::cout << "Ping RX: " << PKT(pingCnt);
-            std::cout << std::endl;
+            //std::cout << "Ping RX: " << PKT(pingCnt);
+            //std::cout << std::endl;          
+          
+            if(PKT(pingCnt) != (SUPSTATE(lastPing) + 1))
+            {
+                oFile << "***Missed a ping***: ";
+                oFile << "Expected " << (SUPSTATE(lastPing) + 1);
+                oFile << "\tGot " << PKT(pingCnt) << std::endl;
+            }
             
-            RPLY(pingCnt) = PKT(pingCnt);
-            RTSRPLY();
+            SUPSTATE(lastPing) = PKT(pingCnt);
+            SUPSTATE(pingCnt)++;
+            
+            if(PKT(pingCnt) < GRAPHPROPERTIES(pingCntMax))
+            {
+                // Send a reply to the source device.
+                RPLY(pingCnt) = PKT(pingCnt);
+                RTSRPLY();
+            }
+            else
+            {
+                oFile << "Last packet received. ";
+                oFile << "Expected: " << (GRAPHPROPERTIES(pingCntMax) + 1);
+                oFile << " packets \tGot: " << SUPSTATE(pingCnt);
+                oFile << " packets." << std::endl;
+                Super::stop_application();
+            }
           ]]></OnReceive>
         </SupervisorInPin>
+        
+        <OnStop><![CDATA[
+            oFile.close();
+        ]]></OnStop>
       </SupervisorType>
       
     </DeviceTypes>
