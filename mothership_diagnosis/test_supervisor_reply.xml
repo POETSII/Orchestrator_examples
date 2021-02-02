@@ -96,8 +96,8 @@ This XML demonstrates that:
             if(PKT(pingCnt) < GRAPHPROPERTIES(pingCntMax))
             {
                 // Send a reply to the source device.
-                RPLY(pingCnt) = PKT(pingCnt);
-                RTSRPLY();
+                REPLY(pingCnt) = PKT(pingCnt);
+                RTSREPLY();
             }
             else
             {
