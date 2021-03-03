@@ -1,7 +1,7 @@
 /*============================================================================
  * Name        : gentest.cpp
  * Author      : Graeme Bragg
- * Version     : 0.3.56
+ * Version     : 0.4.00
  * Description : Generates an example heated plate that is solved with a
  *                 packet storm.
  *                 Tested with C++17 (-std=c++17).
@@ -62,34 +62,28 @@ void writeDev(uint32_t x, uint32_t y, std::vector<fixedNode>& fNodes,
     if(isFixed)
     {
         gFile << "      <DevI id=\"c_" << x << "_" << y; 
-        gFile << "\" type=\"fixedNode\">";
-        gFile << "<P>\"t\": " << temp << ", \"x\": " << x; 
-        gFile << ", \"y\": " << y;
-        gFile << "</P></DevI>" << std::endl;
+        gFile << "\" type=\"fixedNode\" P=\"";
+        gFile << temp << "," << x << "," << y << "\"/>" << std::endl;
         
         if(dummy && (x < (xMax-1) || y < (yMax-1)))
         {
             // write a dummy padding  device 
             gFile << "      <DevI id=\"dummy_" << x << "_" << y; 
-            gFile << "\" type=\"cell\">";
-            gFile << "<P>\"dummy\": 1" << "</P></DevI>";
+            gFile << "\" type=\"cell\" P=\"" << x << "," << y << ",1\"/>";
             gFile << std::endl;
 
             // Heartbeat Hack
             eFile << "      <EdgeI path=\"dummy_" << x << "_" << y << ":heart_in-";
             eFile << "dummy_" << x << "_" << y << ":heart_out\"/>" << std::endl;
-
         }
     } else {
         gFile << "      <DevI id=\"c_" << x << "_" << y;
-        gFile << "\" type=\"cell\">";
-        gFile << "<P>\"x\": " << x << ", \"y\": " << y;
+        gFile << "\" type=\"cell\" P=\"" << x << "," << y << ",0";
         if(minChg != "")
         {
-            gFile << ", \"minChg\": " << minChg;
+            gFile << "," << minChg;
         }
-        gFile << "</P></DevI>";
-        gFile << std::endl;
+        gFile << "\"/>" << std::endl;
 
         if(y < yMax-1) //North connection
         {
@@ -126,17 +120,7 @@ void writeDev(uint32_t x, uint32_t y, std::vector<fixedNode>& fNodes,
             eFile << "_" << y << ":out\"/>";
             eFile << std::endl;
         }
-        
-        //eFile << "      <EdgeI path=\":instr-c_";
-        //eFile << x << "_" << y;
-        //eFile << ":instr\"/>" << std::endl;
-        //eFile << std::endl;
     }
-
-    // Finished 
-    eFile << "      <EdgeI path=\":finished-c_";
-    eFile << x << "_" << y;
-    eFile << ":finished\"/>" << std::endl;
     
     if(!isFixed)
     {
@@ -359,8 +343,11 @@ int main(int argc, const char * argv[]) {
     }
     gFile << std::endl << "-->" << std::endl;
     
-    gFile << "<Graphs xmlns=\"https://poets-project.org/schemas/virtual-graph-schema-v2\">" << std::endl;
-    std::cout << "<Graphs xmlns=\"https://poets-project.org/schemas/virtual-graph-schema-v2\">" << std::endl;
+    
+    gFile << "<Graphs xmlns=\"\" appname=\"PlateHeat\">" << std::endl;
+    std::cout << "<Graphs xmlns=\"\" appname=\"PlateHeat\">" << std::endl;
+    //gFile << "<Graphs xmlns=\"https://poets-project.org/schemas/virtual-graph-schema-v4\">" << std::endl;
+    //std::cout << "<Graphs xmlns=\"https://poets-project.org/schemas/virtual-graph-schema-v4\">" << std::endl;
 
 
     unsigned hcMaxScale, hbIdxScale;
@@ -456,8 +443,9 @@ int main(int argc, const char * argv[]) {
 
     //Form the GraphInstance member
     std::ostringstream ssInst;
-    ssInst << "  <GraphInstance id=\"" << gIDstr << "\" graphTypeId=\"" << gType << "\">" << std::endl;
-    ssInst << "<Properties>\"xSize\": " << xMax << ", \"ySize\": " << yMax << ", \"nodeCount\": " << nodeCount << "</Properties>";
+    ssInst << "  <GraphInstance id=\"" << gIDstr << "\" graphTypeId=\"";
+    ssInst << gType << "\" P=\"" << xMax << "," << yMax << ",";
+    ssInst << nodeCount << "\">";
     gInstance = ssInst.str();
 
     //Write all of the instance preamble
