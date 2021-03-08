@@ -3,132 +3,125 @@
     <SharedCode><![CDATA[
     #include <stdlib.h>
     #include <cmath>
-    
+
     //#define LESSDEBUG
     //#define USEDEBUG
     //#define VERBOSEDEBUG
-    
+
     int heartbeatIndex = 0;
     ]]></SharedCode>
 
-    <Properties>
-      <Scalar type="uint32_t" name="xSize" default="10"/>
-      <Scalar type="uint32_t" name="ySize" default="10"/>
-      <Scalar type="uint32_t" name="nodeCount" default="100"/>
-    </Properties>
+    <Properties><![CDATA[
+    uint32_t xSize = 10;
+    uint32_t ySize = 10;
+    uint32_t nodeCount = 100;
+    ]]></Properties>
 
-    <MessageTypes>
-      <MessageType id="dummy"/> <!-- Used for __init dummy pins -->
-      
-      <MessageType id="heartbeat">
-      </MessageType>
+    <MessageTypes> 
+    <MessageType id="heartbeat"><![CDATA[
+    ]]></MessageType>
 
-      <MessageType id="update">
-        <Message>
-          <Scalar type="float" name="t"/>
-        </Message>
-      </MessageType>
+    <MessageType id="update"><![CDATA[
+    float t;
+    ]]></MessageType>
 
-      <MessageType id="finished">
-        <Message>
-            <Scalar type="uint32_t" name="x"/>
-            <Scalar type="uint32_t" name="y"/>
-            <Scalar type="float" name="t"/>
-            <Scalar type="uint32_t" name="finIdx"/>
-            <Scalar type="uint32_t" name="nCnt"/>
-            <Scalar type="uint32_t" name="eCnt"/>
-            <Scalar type="uint32_t" name="sCnt"/>
-            <Scalar type="uint32_t" name="wCnt"/>
-            <Scalar type="uint32_t" name="oCnt"/>
-            <Scalar type="uint8_t" name="fin"/>
-        </Message>
-      </MessageType>
-
-      <MessageType id="exit">
-      </MessageType>
+    <MessageType id="finished"><![CDATA[
+    uint32_t x;
+    uint32_t y;
+    float t;
+    uint32_t finIdx;
+    uint32_t nCnt;
+    uint32_t eCnt;
+    uint32_t sCnt;
+    uint32_t wCnt;
+    uint32_t oCnt;
+    uint8_t fin;
+    ]]></MessageType>
     </MessageTypes>
 
     <DeviceTypes>
-      <DeviceType id="cell">
+    <DeviceType id="cell">
         <!-- This is a common-or-garden 2d cell, with no boundary stuff -->
-        <Properties>
-          <Scalar type="float" name="minChg" default="0.5"/>
-          <!-- <Scalar type="float" name="minChg" default="0.03125"/> -->
-          <Scalar type="uint16_t" name="hcMax" default="HCMAX_DEF"/>
-          <Scalar type="uint32_t" name="x"/>
-          <Scalar type="uint32_t" name="y"/>
-          <Scalar type="uint32_t" name="dummy" default="0"/>
-        </Properties>
+        <Properties><![CDATA[
+        uint32_t x;
+        uint32_t y;
+        uint32_t dummy = 0;
+        float minChg = 0.5;
+        //float minChg = 0.03125;
+        uint16_t hcMax = HCMAX_DEF;
+        ]]></Properties>
 
-        <State>
-          <Scalar type="float" name="t" default="0.0"/>            <!-- Our temperature -->
-          <Scalar type="uint16_t" name="hc" default="0"/>        <!-- Heartbeat Count -->
-          <Scalar type="uint8_t" name="updated" default="0"/>
-          <Scalar type="uint8_t" name="active" default="0"/>
-          <Scalar type="uint8_t" name="activeCount" default="0"/>
-          <Scalar type="uint8_t" name="fin" default="0"/>        <!-- Finished Flag -->
-          <Scalar type="uint8_t" name="finSent" default="0"/>        <!-- Finished Flag -->
-          <Scalar type="uint16_t" name="finIdx" default="0"/>        <!-- Finished Index -->
+        <State><![CDATA[
+        float t = 0.0;              // Our temperature
+        uint16_t hc = 0;            // Heartbeat Count
+        uint8_t updated = 0;
+        uint8_t active = 0;
+        uint8_t activeCount = 0;
+        uint8_t fin = 0;            // Finished Flag
+        uint8_t finSent = 0;        // Finished Sent Flag
+        uint16_t finIdx = 0;        // Finished Index
 
-          <Scalar type="float" name="tNorth" default="0.0"/>        <!-- North temperature -->
-          <Scalar type="uint8_t" name="nNorth" default="0"/>    <!-- Are we connected to the North? Could be done as a property if we don't discover... -->
+        float tNorth = 0.0;         // North temperature
+        uint8_t nNorth = 0;         // Are we connected to the North? 
+                                    // Could be a property if we don't discover...
 
-          <Scalar type="float" name="tEast" default="0.0"/>        <!-- East temperature -->
-          <Scalar type="uint8_t" name="nEast" default="0"/>    <!-- Are we connected to the East? -->
+        float tEast = 0.0;          // East temperature
+        uint8_t nEast = 0;          // Are we connected to the East?
 
-          <Scalar type="float" name="tSouth" default="0.0"/>        <!-- South temperature -->
-          <Scalar type="uint8_t" name="nSouth" default="0"/>    <!-- Are we connected to the South? -->
+        float tSouth = 0.0;         // South temperature
+        uint8_t nSouth = 0;         // Are we connected to the South?
 
-          <Scalar type="float" name="tWest" default="0.0"/>        <!-- West temperature -->
-          <Scalar type="uint8_t" name="nWest" default="0"/>    <!-- Are we connected to the West? -->
-          
-          <Scalar type="uint32_t" name="nCnt" default="0"/>
-          <Scalar type="uint32_t" name="eCnt" default="0"/>
-          <Scalar type="uint32_t" name="sCnt" default="0"/>
-          <Scalar type="uint32_t" name="wCnt" default="0"/>
-          <Scalar type="uint32_t" name="oCnt" default="0"/>
-        </State>
+        float tWest = 0.0;          // West temperature
+        uint8_t nWest = 0;          // Are we connected to the West?
+                  
+        uint32_t nCnt = 0;
+        uint32_t eCnt = 0;
+        uint32_t sCnt = 0;
+        uint32_t wCnt = 0;
+        uint32_t oCnt = 0;
+        ]]></State>
 
         <SharedCode><![CDATA[
-          #include "tinsel.h"
-        
-          typedef struct device_state
-          {
-             float t;
-             uint16_t hc;
-             uint8_t updated;
-             uint8_t active;
-             uint8_t activeCount;
-             uint8_t fin;
-             uint8_t finSent;
-             uint16_t finIdx;
-             float tNorth;
-             uint8_t nNorth;
-             float tEast;
-             uint8_t nEast;
-             float tSouth;
-             uint8_t nSouth;
-             float tWest;
-             uint8_t nWest;
-             uint32_t nCnt;
-             uint32_t eCnt;
-             uint32_t sCnt;
-             uint32_t wCnt;
-             uint32_t oCnt;
-          }  device_state_t;
+        #include "tinsel.h"
 
-          float thirdMul = 1.0/3;
-          
-          typedef struct device_properties
-          {
-             float minChg;
-             uint16_t hcMax;
-             uint32_t x;
-             uint32_t y;
-          }  device_properties_t;
-          
-          void updateTemp(void* state, const void* props)
-          {
+        typedef struct device_state
+        {
+            float t;
+            uint16_t hc;
+            uint8_t updated;
+            uint8_t active;
+            uint8_t activeCount;
+            uint8_t fin;
+            uint8_t finSent;
+            uint16_t finIdx;
+            float tNorth;
+            uint8_t nNorth;
+            float tEast;
+            uint8_t nEast;
+            float tSouth;
+            uint8_t nSouth;
+            float tWest;
+            uint8_t nWest;
+            uint32_t nCnt;
+            uint32_t eCnt;
+            uint32_t sCnt;
+            uint32_t wCnt;
+            uint32_t oCnt;
+        }  device_state_t;
+
+        const float thirdMul = 1.0/3;
+
+        typedef struct device_properties
+        {
+            uint32_t x;
+            uint32_t y;
+            uint32_t dummy;
+            float minChg;
+            uint16_t hcMax;
+        }  device_properties_t;
+
+        void updateTemp(void* state, const void* props)
+        {
             device_state_t* deviceState = static_cast<device_state_t*>(state);
             const device_properties_t* deviceProperties = static_cast<const device_properties_t*>(props);
             float tCalc = 0;
@@ -137,505 +130,461 @@
             tCalc += deviceState->tEast;
             tCalc += deviceState->tSouth;
             tCalc += deviceState->tWest;
-            
-            switch(deviceState->activeCount){
-              case 4:   tCalc = (tCalc*0.25);
-                        break;
-              case 3:   tCalc = (tCalc*thirdMul); //0x3eaaaaab);
-                        break;
-              case 2:   tCalc = (tCalc*0.5);
-                        break;
-              default:  break;   // 1 edge, no calc to do
-            }
 
-            //only update if the change in our temperature is large enough or we have not run yet
-            if((deviceState->active == 0) || (fabs(tCalc - deviceState->t) >= deviceProperties->minChg))
-            {
-              deviceState->hc = 0;
-              deviceState->fin = 0;
-              deviceState->t = tCalc;
-              deviceState->updated = 1;
-              heartbeatIndex = 0;
-            }
-            
-            //return tCalc;
-          }
+            switch(deviceState->activeCount){
+                case 4:     tCalc = (tCalc*0.25);
+                            break;
+                case 3:     tCalc = (tCalc*thirdMul); //0x3eaaaaab);
+                            break;
+                case 2:     tCalc = (tCalc*0.5);
+                            break;
+                default:    break;   // 1 edge, no calc to do
+        }
+
+        //only update if the change in our temperature is large enough or we have not run yet
+        if((deviceState->active == 0) || (fabs(tCalc - deviceState->t) >= deviceProperties->minChg))
+        {
+            deviceState->hc = 0;
+            deviceState->fin = 0;
+            deviceState->t = tCalc;
+            deviceState->active = 0;
+            deviceState->updated = 1;
+            heartbeatIndex = 0;
+        }
+
+        //return tCalc;
+        }
         ]]></SharedCode>
 
         <ReadyToSend><![CDATA[  
-          if((deviceState->fin == 1) ^ (deviceState->finSent==1))
-          {
-            *readyToSend |= RTS_FLAG_finished;
-          } else if(deviceState->updated) {
-            *readyToSend |= RTS_FLAG_out;
-          }
+        if((DEVICESTATE(fin) == 1) ^ (DEVICESTATE(finSent)==1))
+        {
+            RTSSUP();
+        } else if(DEVICESTATE(updated)) {
+            RTS(out);
+        }
         ]]></ReadyToSend>
 
-        <OnCompute><![CDATA[
-          //TODO: Write heartbeat code
-          
-          if(deviceState->active == 1)
-          {
+        <OnDeviceIdle><![CDATA[
+        /* Handle temp updates in buff */
+        if(DEVICESTATE(active) == 1)
+        {
             updateTemp(deviceState, deviceProperties);
-          }
+        }
           
-          if((deviceState->updated > 0)) {  // && (deviceProperties->dummy == 0)
+        if((DEVICESTATE(updated) > 0)) {  // && (deviceProperties->dummy == 0)
             return(1);
-          }
-          
-          
-          if(deviceInstance->deviceID == 0)
-          {
+        }
+        
+        
+        /* HACKS ABOUND: we manually throw a packet at ourselves to trigger a HB. */
+        if(deviceInstance->deviceID == 0)
+        {
             if(heartbeatIndex > HBIDX_DEF)  // Execute on every tenth OnIdle.
             {
-              heartbeatIndex = 0;
-              P_Msg_t hbMsg;
-              P_Msg_Hdr_t* hdr = &(hbMsg.header);
-              
-              // Form the Pin Address
-              hdr->swAddr = ((P_ADDR_BROADCAST << P_SW_DEVICE_SHIFT) & P_SW_DEVICE_MASK);
-              hdr->pinAddr = (((deviceInstance->numInputs-1) << P_HD_TGTPIN_SHIFT)
-                                & P_HD_TGTPIN_MASK);     //HB is last pin
-              hdr->pinAddr |= ((0 << P_HD_DESTEDGEINDEX_SHIFT)
-                                & P_HD_DESTEDGEINDEX_MASK);     // Broadcast
-              
-              softswitch_onReceive(deviceInstance->thread, &hbMsg);                
+                heartbeatIndex = 0;
+                P_Msg_t hbMsg;
+                P_Msg_Hdr_t* hdr = &(hbMsg.header);
+                
+                // Form the Pin Address
+                hdr->swAddr = ((P_ADDR_BROADCAST << P_SW_DEVICE_SHIFT) & P_SW_DEVICE_MASK);
+                hdr->pinAddr = (((deviceInstance->numInputs-1) << P_HD_TGTPIN_SHIFT)
+                                  & P_HD_TGTPIN_MASK);     //HB is last pin
+                hdr->pinAddr |= ((0 << P_HD_DESTEDGEINDEX_SHIFT)
+                                  & P_HD_DESTEDGEINDEX_MASK);     // Broadcast
+                
+                softswitch_onReceive(deviceInstance->thread, &hbMsg);                
             }
             else
             {
-              heartbeatIndex++;
+                heartbeatIndex++;
             }
             return(1);
-          }
-          return(0); //GOTCHA: Surely this should be defualt behaviour?
-        ]]></OnCompute>
+        }
+        ]]></OnDeviceIdle>
 
-        <!-- Device State Handlers -->
-        <InputPin name="initDummy" messageTypeId="dummy">
-          <OnReceive><![CDATA[
-            // Dummy input pin to handle hacky __init stuff.
-    #ifdef VERBOSEDEBUG
-            handler_log(2,"P_INIT");
-    #endif
-          ]]></OnReceive>
-        </InputPin>
-        
+        <!-- Device State Handlers -->       
         <InputPin name="north_in" messageTypeId="update">
-          <OnReceive><![CDATA[
-    #ifdef VERBOSEDEBUG
+        <OnReceive><![CDATA[
+        #ifdef VERBOSEDEBUG
             handler_log(2,"N_IN");
-    #endif
-            if(deviceState->nNorth == 0)
+        #endif
+            if(DEVICESTATE(nNorth) == 0)
             {
-              deviceState->nNorth = 1;
-              deviceState->active = 1;
-              deviceState->activeCount++;
+              DEVICESTATE(nNorth) = 1;
+              DEVICESTATE(activeCount)++;
             }
             
-            deviceState->tNorth = message->t;
-            deviceState->nCnt++;
+            DEVICESTATE(tNorth) = PKT(t);
+            DEVICESTATE(active) = 1;
+            DEVICESTATE(nCnt)++;
             //updateTemp(deviceState, deviceProperties);
-          ]]></OnReceive>
+        ]]></OnReceive>
         </InputPin>
 
         <InputPin name="east_in" messageTypeId="update">
-          <OnReceive><![CDATA[
-    #ifdef VERBOSEDEBUG
+        <OnReceive><![CDATA[
+        #ifdef VERBOSEDEBUG
             handler_log(2,"E_IN");
-    #endif
-            if(deviceState->nEast == 0)
+        #endif
+            if(DEVICESTATE(nEast) == 0)
             {
-              deviceState->nEast = 1;
-              deviceState->active = 1;
-              deviceState->activeCount++;
+              DEVICESTATE(nEast) = 1;
+              DEVICESTATE(activeCount)++;
             }
             
-            deviceState->tEast = message->t;
-            deviceState->eCnt++;
+            DEVICESTATE(tEast) = PKT(t);
+            DEVICESTATE(active) = 1;
+            DEVICESTATE(eCnt++);
             //updateTemp(deviceState, deviceProperties);
-          ]]></OnReceive>
+        ]]></OnReceive>
         </InputPin>
 
         <InputPin name="south_in" messageTypeId="update">
-          <OnReceive><![CDATA[
-    #ifdef VERBOSEDEBUG
+        <OnReceive><![CDATA[
+        #ifdef VERBOSEDEBUG
             handler_log(2,"S_IN");
-    #endif
-            if(deviceState->nSouth == 0)
+        #endif
+            if(DEVICESTATE(nSouth) == 0)
             {
-              deviceState->nSouth = 1;
-              deviceState->active = 1;
-              deviceState->activeCount++;
+              DEVICESTATE(nSouth) = 1;
+              DEVICESTATE(activeCount)++;
             }
             
-            deviceState->tSouth = message->t;
-            deviceState->sCnt++;
+            DEVICESTATE(tSouth) = PKT(t);
+            DEVICESTATE(active) = 1;
+            DEVICESTATE(sCnt)++;
             //updateTemp(deviceState, deviceProperties);
-          ]]></OnReceive>
+        ]]></OnReceive>
         </InputPin>
 
         <InputPin name="west_in" messageTypeId="update">
-          <OnReceive><![CDATA[
-    #ifdef VERBOSEDEBUG
+        <OnReceive><![CDATA[
+        #ifdef VERBOSEDEBUG
             handler_log(2,"W_IN");
-    #endif
-            if(deviceState->nWest == 0)
+        #endif
+            if(DEVICESTATE(nWest) == 0)
             {
-              deviceState->nWest = 1;
-              deviceState->active = 1;
-              deviceState->activeCount++;
+              DEVICESTATE(nWest) = 1;
+              DEVICESTATE(activeCount)++;
             }
             
-            deviceState->tWest = message->t;
-            deviceState->wCnt++;
+            DEVICESTATE(tWest) = PKT(t);
+            DEVICESTATE(active) = 1;
+            DEVICESTATE(wCnt)++;
             //updateTemp(deviceState, deviceProperties);
-          ]]></OnReceive>
+        ]]></OnReceive>
         </InputPin>
 
         <OutputPin name="out" messageTypeId="update">
-          <OnSend><![CDATA[
-    #ifdef VERBOSEDEBUG
+        <OnSend><![CDATA[
+        #ifdef VERBOSEDEBUG
             handler_log(2,"C_OUT");
-    #endif
-            message->t = deviceState->t;
-            deviceState->oCnt++;
-            deviceState->updated = 0;
-          ]]></OnSend>
+        #endif
+            PKT(t) = DEVICESTATE(t);
+            DEVICESTATE(oCnt)++;
+            DEVICESTATE(updated) = 0;
+        ]]></OnSend>
         </OutputPin>
         
         <!-- Experiment Termination Handlers -->
-        <OutputPin name="finished" messageTypeId="finished">
-          <OnSend><![CDATA[
-            //It's a toggle.
-            if(!deviceState->finSent) //Finished, but have not sent
-            {
-              deviceState->finIdx++;    //Increment BEFORE use!!!
-              deviceState->finSent = 1;
-              message->fin = 1;
-          #ifdef USEDEBUG
+        <SupervisorOutPin messageTypeId="finished">
+        <OnSend><![CDATA[
+        //It's a toggle.
+        if(!DEVICESTATE(finSent)) //Finished, but have not sent
+        {
+            DEVICESTATE(finIdx)++;    //Increment BEFORE use!!!
+            DEVICESTATE(finSent) = 1;
+            message->fin = 1;
+        #ifdef USEDEBUG
+            handler_log(2,"FIN_SENT");
+        #endif
+        #ifdef LESSDEBUG
+            if(deviceInstance->deviceID == 0) {
                 handler_log(2,"FIN_SENT");
-          #endif
-          #ifdef LESSDEBUG
-                if(deviceInstance->deviceID == 0) {
-                  handler_log(2,"FIN_SENT");
-                }
-          #endif
-            } else {                  //Sent but finished cancelled
-              deviceState->finSent = 0;
-              message->fin = 0;
-              #ifdef USEDEBUG
-                handler_log(2,"FIN_CANCEL");
-              #endif
             }
-            message->finIdx = deviceState->finIdx;
-            message->t = deviceState->t;
+        #endif
+        } else {                  //Sent but finished cancelled
+            DEVICESTATE(finSent) = 0;
+            PKT(fin) = 0;
+        #ifdef USEDEBUG
+            handler_log(2,"FIN_CANCEL");
+        #endif
+        }
+        PKT(finIdx) = DEVICESTATE(finIdx);
+        PKT(t) = DEVICESTATE(t);
 
-            message->x = deviceProperties->x;
-            message->y = deviceProperties->y;
-            
-            message->nCnt = deviceState->nCnt;
-            message->eCnt = deviceState->eCnt;
-            message->sCnt = deviceState->sCnt;
-            message->wCnt = deviceState->wCnt;
-            message->oCnt = deviceState->oCnt;
-          ]]></OnSend>
-        </OutputPin>
-
-        <InputPin name="done" messageTypeId="exit">
-          <OnReceive><![CDATA[
-            #ifdef USEDEBUG
-              handler_log(2,"CELL_EXIT");
-            #endif
-            deviceInstance->thread->ctlEnd = 1;
-          ]]></OnReceive>
-        </InputPin>
+        PKT(x) = DEVICEPROPERTIES(x);
+        PKT(y) = DEVICEPROPERTIES(y);
+        
+        PKT(nCnt) = DEVICESTATE(nCnt);
+        PKT(eCnt) = DEVICESTATE(eCnt);
+        PKT(sCnt) = DEVICESTATE(sCnt);
+        PKT(wCnt) = DEVICESTATE(wCnt);
+        PKT(oCnt) = DEVICESTATE(oCnt);
+        ]]></OnSend>
+        </SupervisorOutPin>
         
         <OutputPin name="heart_out" messageTypeId="heartbeat">
-          <OnSend><![CDATA[   
-            // Hacky heartbeat output pin for self-connecting to avoid sanity checking.
-    #ifdef VERBOSEDEBUG
-              handler_log(2,"HB_out");
-    #endif
-          ]]></OnSend>
+        <OnSend><![CDATA[   
+        // Hacky heartbeat output pin for self-connecting to avoid sanity checking.
+        #ifdef VERBOSEDEBUG
+            handler_log(2,"HB_out");
+        #endif
+        ]]></OnSend>
         </OutputPin>
 
         <InputPin name="heart_in" messageTypeId="heartbeat">
-          <OnReceive><![CDATA[
-            if(deviceState->active && (deviceState->finSent==0)) {
-              deviceState->hc++;
+        <OnReceive><![CDATA[
+            if(DEVICESTATE(active) && (DEVICESTATE(finSent)==0)) {
+                DEVICESTATE(hc)++;
             
-    #ifdef VERBOSEDEBUG
-              handler_log(2,"HB_REC");
-    #endif
+        #ifdef VERBOSEDEBUG
+                handler_log(2,"HB_REC");
+        #endif
 
-              if(deviceState->hc >= deviceProperties->hcMax)
-              {
-                deviceState->fin = 1;
-              }
+                if(DEVICESTATE(hc) >= DEVICEPROPERTIES(hcMax))
+                {
+                    DEVICESTATE(fin) = 1;
+                }
             } else {
-    #ifdef VERBOSEDEBUG
-              //handler_log(1,"HB_IGN");
-    #endif
+        #ifdef VERBOSEDEBUG
+                //handler_log(1,"HB_IGN");
+        #endif
             }
-          ]]></OnReceive>
+        ]]></OnReceive>
         </InputPin>
-      </DeviceType>
+    </DeviceType>
 
-      <DeviceType id="fixedNode">
-        <Properties>
-          <Scalar name="t" type="float" default="21.0"/>
-          <Scalar type="uint16_t" name="maxUpdate" default="1"/>
-          <Scalar type="uint32_t" name="x" default="0"/>
-          <Scalar type="uint32_t" name="y" default="0"/>
-        </Properties>
+    <DeviceType id="fixedNode">
+        <Properties><![CDATA[
+        float t = 21.0;
+        uint32_t x = 0;
+        uint32_t y = 0;
+        uint16_t maxUpdate = 1;
+        ]]></Properties>
 
-        <State>
-          <Scalar type="uint16_t" name="updateCount" default="0"/>
-          <Scalar type="uint8_t" name="done" default="0"/>
-          <Scalar type="uint8_t" name="finSent" default="0"/>
-          <Scalar type="uint8_t" name="updated" default="0"/>
-        </State>
+        <State><![CDATA[
+        uint16_t updateCount = 0;
+        uint8_t done = 0;
+        uint8_t finSent = 0;
+        uint8_t updated = 0;
+        ]]></State>
         
         <SharedCode><![CDATA[
           
         ]]></SharedCode>
         
         <ReadyToSend><![CDATA[
-          *readyToSend=0;
-
-          if(deviceState->finSent < 1){
-            if(deviceState->updateCount < deviceProperties->maxUpdate) {
-              *readyToSend |= RTS_FLAG_out;
-            } else if(deviceState->updated > 0) {
-              *readyToSend |= RTS_FLAG_finished;
+        if(DEVICESTATE(finSent) < 1){
+            if(DEVICESTATE(updateCount) < DEVICEPROPERTIES(maxUpdate)) {
+                RTS(out);
+            } else {
+                RTSSUP();
             }
-          } else {
-            //return 0;
-          }
+        }
         ]]></ReadyToSend>
         
-        <InputPin name="initDummy" messageTypeId="dummy">
-          <OnReceive><![CDATA[
-            // Dummy input pin to handle hacky __init stuff.
-    #ifdef VERBOSEDEBUG
-            handler_log(2,"P_INIT");
-    #endif
-          ]]></OnReceive>
-        </InputPin>
-
-        <InputPin name="done" messageTypeId="exit">
-          <OnReceive><![CDATA[
-            handler_log(5,"CELL_EXIT");
-
-            deviceInstance->thread->ctlEnd = 1;
-          ]]></OnReceive>
-        </InputPin>
+        <OnInit><![CDATA[
+        return 1;       // Trigger RTS
+        ]]></OnInit>
         
         <OutputPin name="out" messageTypeId="update">
-          <OnSend><![CDATA[
-    #ifdef VERBOSEDEBUG
+        <OnSend><![CDATA[
+        #ifdef VERBOSEDEBUG
             handler_log(2,"F_OUT");
-    #endif
-            message->t = deviceProperties->t;
-            deviceState->updateCount++;
-          ]]></OnSend>
+        #endif
+            PKT(t) = DEVICEPROPERTIES(t);
+            DEVICESTATE(updateCount)++;
+        ]]></OnSend>
         </OutputPin>
         
-        <OutputPin name="finished" messageTypeId="finished">
-          <OnSend><![CDATA[
-            message->fin = 1;
-            message->finIdx = 1;
-            message->t = deviceProperties->t;
-
-            message->x = deviceProperties->x;
-            message->y = deviceProperties->y;
-            
-            message->nCnt = 0;
-            message->eCnt = 0;
-            message->sCnt = 0;
-            message->wCnt = 0;
-            message->oCnt = 1;
-            
-            deviceState->finSent = 1;
-            
-            #ifdef USEDEBUG
-              handler_log(2,"F_FIN_SENT");
-            #endif
-          ]]></OnSend>
-        </OutputPin>
+        <SupervisorOutPin messageTypeId="finished">
+        <OnSend><![CDATA[
+        PKT(fin) = 1;
+        PKT(finIdx) = 1;
+        PKT(t) = DEVICEPROPERTIES(t);
         
-        <OnCompute><![CDATA[
-          if(deviceState->updateCount == 0) {
-            return(1);
-          }
-          
-          if(deviceState->updateCount >= deviceProperties->maxUpdate) {
-            deviceState->updated++;
-            return(1);
-          }
-          return(0); //GOTCHA: Surely this should be defualt behaviour?
-        ]]></OnCompute>
-      </DeviceType>
+        PKT(x) = DEVICEPROPERTIES(x);
+        PKT(y) = DEVICEPROPERTIES(y);
+        
+        PKT(nCnt) = 0;
+        PKT(eCnt) = 0;
+        PKT(sCnt) = 0;
+        PKT(wCnt) = 0;
+        PKT(oCnt) = 1;
+        
+        DEVICESTATE(finSent) = 1;
+        
+        #ifdef USEDEBUG
+            handler_log(2,"F_FIN_SENT");
+        #endif
+        ]]></OnSend>
+        </SupervisorOutPin>
+        
+        <OnDeviceIdle><![CDATA[
+        if(DEVICESTATE(finSent) < 1) return 1;
+        // Nothing to do
+        ]]></OnDeviceIdle>
+    </DeviceType>
       
-      <SupervisorDeviceType id="supervisorNode">
+    <SupervisorType id="supervisorNode">
         <Code><![CDATA[
-          #include <fstream>
-          #include <iostream>
-          #include <sstream>
-          #include <string>
-          #include <cstdio>
-          #include <iomanip>
-          #include <cmath>
-          
-          #define USEDEBUG
-          //#define VERBOSEDEBUG
-          
-          #ifdef USEDEBUG
-            #define DEBUG_PRINT(x) std::cout << std::setprecision(2) << x << std::endl
-          #else
-            #define DEBUG_PRINT(x)
-          #endif
-          
-          #ifdef VERBOSEDEBUG
-            #define VERBOSE_PRINT(x) std::cout << std::setprecision(2) << x << std::endl
-          #else
-            #define VERBOSE_PRINT(x)
-          #endif
-          
-          uint32_t finCount = 0;
-          uint8_t sentDone = 0;
-          uint8_t nodesDone = 0;
-          uint8_t finRec = 0;
-
-          time_t tStart, tEnd;
-          
-          //DEBUG_PRINT("HEATED_PLATE_SUPERVISOR");
-          //DEBUG_PRINT("3x3, 9 cells");
+        #include <fstream>
+        #include <iostream>
+        #include <sstream>
+        #include <string>
+        #include <cstdio>
+        #include <iomanip>
+        #include <cmath>
+        #include <vector>
+        
+        #define USEDEBUG
+        //#define VERBOSEDEBUG
+        
+        #ifdef USEDEBUG
+          #define DEBUG_PRINT(x) std::cout << std::setprecision(2) << x << std::endl
+        #else
+          #define DEBUG_PRINT(x)
+        #endif
+        
+        #ifdef VERBOSEDEBUG
+          #define VERBOSE_PRINT(x) std::cout << std::setprecision(2) << x << std::endl
+        #else
+          #define VERBOSE_PRINT(x)
+        #endif
+        
+        //DEBUG_PRINT("HEATED_PLATE_SUPERVISOR");
+        //DEBUG_PRINT("3x3, 9 cells");
+        
+        typedef struct nodeDataType
+        {
+            uint8_t fin = 0;
+            uint16_t finIdx = 0;
+            float t = 0.0;
+            uint32_t nCnt = 0;
+            uint32_t eCnt = 0;
+            uint32_t sCnt = 0;
+            uint32_t wCnt = 0;
+            uint32_t oCnt = 0;
+        } nodeData_t;
 
         ]]></Code>
+        
+        <Properties><![CDATA[
+        uint32_t xSize = XSIZE_DEF;
+        uint32_t ySize = YSIZE_DEF;
+        uint32_t nodeCount = NODE_DEF;
+        uint32_t loopMax = 1000;
+        ]]></Properties>
+            
+        <State><![CDATA[
+        std::vector<nodeData_t> data = std::vector<nodeData_t>(NODE_DEF);
+        uint32_t loopCount = 0;
+        
+        uint32_t finCount = 0;
+        uint8_t finRec = 0;
+        
+        time_t tStart;
+        time_t tEnd;
+        ]]></State>
+        
 
         <!-- XSIZE_DEF, YSIZE_DEF and NODE_DEF are replaced by the generator. -->
         <!-- This is a complete hack and needs some thought in how to parameterise. -->
-        <InputPin name="finished" messageTypeId="finished">
-          <Properties>
-            <Scalar type="uint32_t" name="xSize" default="XSIZE_DEF"/>
-            <Scalar type="uint32_t" name="ySize" default="YSIZE_DEF"/>
-            <Scalar type="uint32_t" name="nodeCount" default="NODE_DEF"/>
-            <Scalar type="uint32_t" name="loopMax" default="1000"/>
-          </Properties>
-          <State>
-            <Array name="data" length="NODE_DEF">
-              <Tuple name="data_t">
-                <Scalar type="uint8_t" name="fin" default="0"/>
-                <Scalar type="uint16_t" name="finIdx" default="0"/>
-                <Scalar type="float" name="t" default="0.0"/>
-                <Scalar type="uint32_t" name="nCnt" default="0"/>
-                <Scalar type="uint32_t" name="eCnt" default="0"/>
-                <Scalar type="uint32_t" name="sCnt" default="0"/>
-                <Scalar type="uint32_t" name="wCnt" default="0"/>
-                <Scalar type="uint32_t" name="oCnt" default="0"/>
-              </Tuple>
-            </Array>
-            <Scalar type="uint32_t" name="loopCount" default="0"/>
-          </State>
+        <SupervisorInPin id="finished" messageTypeId="finished">
           <OnReceive><![CDATA[
             VERBOSE_PRINT("MSG:");
-            if((message->x >= sEdgeProperties->xSize) || (message->y >= sEdgeProperties->ySize))
+            if((PKT(x) >= SUPPROPERTIES(xSize)) || (PKT(y) >= SUPPROPERTIES(ySize)))
             {
               //Something has gone horribly wrong and we have received a message for a node that can't exist.
               DEBUG_PRINT("ERR_MSG_CELL_NE");
             } else {
-              uint64_t loc = (message->x*sEdgeProperties->xSize) + message->y;
+              uint64_t loc = (PKT(x) * SUPPROPERTIES(xSize)) + PKT(y);
               
-              if(message->fin && (message->finIdx > sEdgeState->data_t[loc].finIdx))
+              if(PKT(fin) && (PKT(finIdx) > SUPSTATE(data[loc].finIdx)))
               {
                 //It's a finished message that is newer than what we have.
-                VERBOSE_PRINT("\tFIN:" << message->x << "," << message->y << " IDX:" << message->finIdx << " T:"  << message->t);
+                VERBOSE_PRINT("\tFIN:" << PKT(x) << "," << PKT(y) << " IDX:" << PKT(finIdx) << " T:"  << PKT(t));
 
-                if(finRec == 0)
+                if(SUPSTATE(finRec) == 0)
                 {
                   //First rec, start timing.
-                  finRec = 1;
-                  tStart = std::time(NULL);
+                  SUPSTATE(finRec) = 1;
+                  SUPSTATE(tStart) = std::time(NULL);
                   std::ofstream tFile;
                   std::ostringstream sst;
-                  sst << "plate_" << sEdgeProperties->xSize << "x" << sEdgeProperties->ySize << "_time.txt";
+                  sst << "plate_" << SUPPROPERTIES(xSize) << "x" << SUPPROPERTIES(ySize) << "_time.txt";
                   tFile.open(sst.str());
-                  tFile << message->x << "," << message->y << ":" << tStart << std::endl;
+                  tFile << PKT(x) << "," << PKT(y) << ":" << SUPSTATE(tStart) << std::endl;
                   tFile.close();
                 }
 
-                if(!sEdgeState->data_t[loc].fin){ finCount++; }; //Node is not already finished.
+                if(!SUPSTATE(data[loc].fin)){ SUPSTATE(finCount)++; }; //Node is not already finished.
 
-                sEdgeState->data_t[loc].fin = 1;
-                sEdgeState->data_t[loc].finIdx = message->finIdx;
-                sEdgeState->data_t[loc].t = message->t;
+                SUPSTATE(data[loc].fin) = 1;
+                SUPSTATE(data[loc].finIdx) = PKT(finIdx);
+                SUPSTATE(data[loc].t) = PKT(t);
                 
-                sEdgeState->data_t[loc].nCnt = message->nCnt;
-                sEdgeState->data_t[loc].eCnt = message->eCnt;
-                sEdgeState->data_t[loc].sCnt = message->sCnt;
-                sEdgeState->data_t[loc].wCnt = message->wCnt;
-                sEdgeState->data_t[loc].oCnt = message->oCnt;
+                SUPSTATE(data[loc].nCnt) = PKT(nCnt);
+                SUPSTATE(data[loc].eCnt) = PKT(eCnt);
+                SUPSTATE(data[loc].sCnt) = PKT(sCnt);
+                SUPSTATE(data[loc].wCnt) = PKT(wCnt);
+                SUPSTATE(data[loc].oCnt) = PKT(oCnt);
                 
 
-              } else if(!(message->fin) && message->finIdx >= sEdgeState->data_t[loc].finIdx) {
+              } else if(!(PKT(fin)) && PKT(finIdx) >= SUPSTATE(data[loc].finIdx)) {
                 //It's a not finished message cancelling the current or future finished message
-                VERBOSE_PRINT("\tNFIN:" << message->x << "," << message->y << " IDX:" << message->finIdx);
-                if(sEdgeState->data_t[loc].fin){ finCount--; }; //Node is already finished.
+                VERBOSE_PRINT("\tNFIN:" << PKT(x) << "," << PKT(y) << " IDX:" << PKT(finIdx));
+                if(SUPSTATE(data[loc].fin)){ SUPSTATE(finCount)--; }; //Node is already finished.
 
-                sEdgeState->data_t[loc].fin = 0;
-                sEdgeState->data_t[loc].finIdx = message->finIdx;
-                sEdgeState->data_t[loc].t = message->t;
+                SUPSTATE(data[loc].fin) = 0;
+                SUPSTATE(data[loc].finIdx) = PKT(finIdx);
+                SUPSTATE(data[loc].t) = PKT(t);
                 
-                sEdgeState->data_t[loc].nCnt = message->nCnt;
-                sEdgeState->data_t[loc].eCnt = message->eCnt;
-                sEdgeState->data_t[loc].sCnt = message->sCnt;
-                sEdgeState->data_t[loc].wCnt = message->wCnt;
-                sEdgeState->data_t[loc].oCnt = message->oCnt;
+                SUPSTATE(data[loc].nCnt) = PKT(nCnt);
+                SUPSTATE(data[loc].eCnt) = PKT(eCnt);
+                SUPSTATE(data[loc].sCnt) = PKT(sCnt);
+                SUPSTATE(data[loc].wCnt) = PKT(wCnt);
+                SUPSTATE(data[loc].oCnt) = PKT(oCnt);
                 
               } else {//Otherwise do nothing with the finish message as it is a duplicate.
-                VERBOSE_PRINT("\tIGNORED:" << message->fin << " " << message->x << "," << message->y << " IDX:" << message->finIdx);
+                VERBOSE_PRINT("\tIGNORED:" << PKT(fin) << " " << PKT(x) << "," << PKT(y) << " IDX:" << PKT(finIdx));
               }
               
-              DEBUG_PRINT("\tFINCOUNT:" << finCount << "/" << sEdgeProperties->nodeCount);
+              DEBUG_PRINT("\tFINCOUNT:" << SUPSTATE(finCount) << "/" << SUPPROPERTIES(nodeCount) << " " << PKT(x) << "," << PKT(y));
               
               //Periodic node count updates
-              if(sEdgeState->loopCount == 0){
-                DEBUG_PRINT("\tNODES_DONE: " << finCount << "/" << sEdgeProperties->nodeCount);
+              if(SUPSTATE(loopCount) == 0){
+                DEBUG_PRINT("\tNODES_DONE: " << SUPSTATE(finCount) << "/" << SUPPROPERTIES(nodeCount));
                 
                 char buffer [100];
                 int cx;
 
-                cx = snprintf (buffer, 100, "NodesDone:%d/%d", finCount, sEdgeProperties->nodeCount);
+                cx = snprintf (buffer, 100, "NodesDone:%d/%d", SUPSTATE(finCount), SUPPROPERTIES(nodeCount));
 
                 if (cx>=0 && cx<100){
                     //handler_log(2,buffer);
                 }
-                sEdgeState->loopCount = sEdgeProperties->loopMax;
+                SUPSTATE(loopCount) = SUPPROPERTIES(loopMax);
               }
-              sEdgeState->loopCount--;
+              SUPSTATE(loopCount)--;
 
-              if(finCount >= sEdgeProperties->nodeCount)
-              {
-                //All of the nodes have finished, do something.
+              if(SUPSTATE(finCount) >= SUPPROPERTIES(nodeCount))
+              { //All of the nodes have finished, do something.
+              
                 //Last rec, Finish timing.
-                tEnd = std::time(NULL);
+                SUPSTATE(tEnd) = std::time(NULL);
                 std::ofstream tFile;
                 std::ostringstream sst;
-                sst << "plate_" << sEdgeProperties->xSize << "x" << sEdgeProperties->ySize << "_time.txt";
+                sst << "plate_" << SUPPROPERTIES(xSize) << "x" << SUPPROPERTIES(ySize) << "_time.txt";
                 tFile.open(sst.str(), std::ofstream::out | std::ofstream::app);
-                tFile << message->x << "," << message->y << ":" << tEnd << "\tElapsed(s): " << (tEnd - tStart)<< std::endl;
+                tFile << PKT(x) << "," << PKT(y) << ":" << SUPSTATE(tEnd) << "\tElapsed(s): ";
+                tFile << (SUPSTATE(tEnd) - SUPSTATE(tStart))<< std::endl;
                 tFile.close();
 
-                DEBUG_PRINT("\tNODES_DONE: " << finCount);
+                DEBUG_PRINT("\tNODES_DONE: " << SUPSTATE(finCount));
                 //handler_log(2, "ALL NODES_DONE");
-                
-                nodesDone = 1;
-                if(!sentDone)
-                {
-                  DEBUG_PRINT("\tSEND_DONE");
-                  //Supervisor::outputs[0]->OnSend(outMsg, msgBuf, 1);
-                }
 
                 //TODO: Send Data to MPI Land. Or write to file.
 
@@ -643,7 +592,7 @@
                 std::ofstream oFile;
                 std::ostringstream ss;
 
-                ss << "plate_" << sEdgeProperties->xSize << "x" << sEdgeProperties->ySize << "_out.csv";
+                ss << "plate_" << SUPPROPERTIES(xSize) << "x" << SUPPROPERTIES(ySize) << "_out.csv";
                 oFile.open(ss.str());
                 DEBUG_PRINT("\tOFILE_OPEN: " << ss.str()) ;
                 //oFile.precision(2);
@@ -655,26 +604,26 @@
                 
                 DEBUG_PRINT("\tRESULTS_WRITE");
 
-                for(unsigned int ix = 0; ix < sEdgeProperties->xSize; ix++)
+                for(unsigned int ix = 0; ix < SUPPROPERTIES(xSize); ix++)
                 {
-                  loc = ix*sEdgeProperties->xSize;
-                  for(unsigned int iy = 0; iy < sEdgeProperties->ySize; iy++)
+                  loc = ix*SUPPROPERTIES(xSize);
+                  for(unsigned int iy = 0; iy < SUPPROPERTIES(ySize); iy++)
                   {
                     oFile << ix << ", " << iy << ", ";
-                    oFile << sEdgeState->data_t[loc].t  << ", ";
-                    oFile << sEdgeState->data_t[loc].finIdx  << ", ";
+                    oFile << SUPSTATE(data[loc].t)  << ", ";
+                    oFile << SUPSTATE(data[loc].finIdx)  << ", ";
                     
-                    oFile << sEdgeState->data_t[loc].oCnt  << ", ";
+                    oFile << SUPSTATE(data[loc].oCnt)  << ", ";
                     
-                    oFile << ( sEdgeState->data_t[loc].nCnt
-                             + sEdgeState->data_t[loc].eCnt
-                             + sEdgeState->data_t[loc].sCnt
-                             + sEdgeState->data_t[loc].wCnt ) << ", ";
+                    oFile << ( SUPSTATE(data[loc].nCnt)
+                             + SUPSTATE(data[loc].eCnt)
+                             + SUPSTATE(data[loc].sCnt)
+                             + SUPSTATE(data[loc].wCnt) ) << ", ";
                     
-                    oFile << sEdgeState->data_t[loc].nCnt  << ", ";
-                    oFile << sEdgeState->data_t[loc].eCnt  << ", ";
-                    oFile << sEdgeState->data_t[loc].sCnt  << ", ";
-                    oFile << sEdgeState->data_t[loc].wCnt  << ", ";
+                    oFile << SUPSTATE(data[loc].nCnt)  << ", ";
+                    oFile << SUPSTATE(data[loc].eCnt)  << ", ";
+                    oFile << SUPSTATE(data[loc].sCnt)  << ", ";
+                    oFile << SUPSTATE(data[loc].wCnt)  << ", ";
                     oFile << std::endl;
                     loc++;
                   }
@@ -686,14 +635,7 @@
               }
             }
           ]]></OnReceive>
-        </InputPin>
-
-        <OutputPin name="done" messageTypeId="exit">
-          <OnSend><![CDATA[
-            DEBUG_PRINT("\t\tSENT_DONE");
-            sentDone = 1;
-          ]]></OnSend>
-        </OutputPin>
-      </SupervisorDeviceType>
+        </SupervisorInPin>
+    </SupervisorType>
     </DeviceTypes>
   </GraphType>
