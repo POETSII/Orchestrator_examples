@@ -538,20 +538,11 @@
                 VERBOSE_PRINT("\tIGNORED:" << PKT(fin) << " " << PKT(x) << "," << PKT(y) << " IDX:" << PKT(finIdx));
               }
               
-              DEBUG_PRINT("\tFINCOUNT:" << SUPSTATE(finCount) << "/" << SUPPROPERTIES(nodeCount) << " " << PKT(x) << "," << PKT(y));
+              //DEBUG_PRINT("\tFINCOUNT:" << SUPSTATE(finCount) << "/" << SUPPROPERTIES(nodeCount) << " " << PKT(x) << "," << PKT(y));
               
               //Periodic node count updates
               if(SUPSTATE(loopCount) == 0){
                 DEBUG_PRINT("\tNODES_DONE: " << SUPSTATE(finCount) << "/" << SUPPROPERTIES(nodeCount));
-                
-                char buffer [100];
-                int cx;
-
-                cx = snprintf (buffer, 100, "NodesDone:%d/%d", SUPSTATE(finCount), SUPPROPERTIES(nodeCount));
-
-                if (cx>=0 && cx<100){
-                    //handler_log(2,buffer);
-                }
                 SUPSTATE(loopCount) = SUPPROPERTIES(loopMax);
               }
               SUPSTATE(loopCount)--;
@@ -618,6 +609,9 @@
                 
                 oFile.close();
                 DEBUG_PRINT("\tOFILE_CLOSE");
+                DEBUG_PRINT("\tPROBLEM " << SUPPROPERTIES(xSize) << "x" <<
+                        SUPPROPERTIES(ySize) << " COMPLETE in " <<
+                        (SUPSTATE(tEnd) - SUPSTATE(tStart)) << " seconds");
               }
             }
           ]]></OnReceive>

@@ -147,11 +147,13 @@ int main(int argc, const char * argv[]) {
     std::string gTypeFile;
     std::string gIDstr;
     std::string gAppend;
+    std::string gReplace;
     std::string gInstance;
 
     std::ofstream gFile;
     std::ifstream tFile;
     std::fstream eFile;
+    std::ofstream cFile;
     std::string line;
 
     //set the type name
@@ -173,6 +175,7 @@ int main(int argc, const char * argv[]) {
     args::ValueFlag<int> fNo(optional, "int", "Fixed-node pattern. (0) 2 opposite corners, (1) 4 opposite corners. Default=0", {'f'});
     args::ValueFlag<std::string> typF(optional, "filename", "Filename of the Type file, default=plate_heat_type.xml", {'g', "type"});
     args::ValueFlag<std::string> oAppend(optional, "string", "String to append to the generated filename before .xml, default=\"\"", {'o'});
+    args::ValueFlag<std::string> oReplace(optional, "string", "String to use instead of the generated filename, default=\"\"", {'O'});
     args::ValueFlag<int> sq(optional, "int", "Squares: Set whether devices are generated linearly (0) or in blocks (1 = thread-level, 2 = box-level), default = 0", {'s'});
     args::ValueFlag<int> sd(optional, "int", "Square Dimension - used to set the x & y dimension of the square size, default = 32 (e.g. 1024 devices)", {'u', "sd"});
     args::ValueFlag<int> tMC(optional, "int", "Set the maximum number of threads (used for Supervisor Instrumentation Array sizing). Default = 49152", {"ThreadMaxCount"});
@@ -248,6 +251,14 @@ int main(int argc, const char * argv[]) {
         gAppend = "";
     }
     
+    //String to append to output filename
+    if(oReplace)
+    {
+        gReplace = args::get(oReplace);
+    } else {
+        gReplace = "";
+    }
+    
     //Define the crude mapping
     if(sq)
     {
@@ -320,7 +331,8 @@ int main(int argc, const char * argv[]) {
     gIDstr = ssID.str();
 
     //Open the files we need
-    gFile.open(gIDstr+gAppend+".xml");        //The generated Graph
+    if(gReplace != "") gFile.open(gReplace+".xml");     //The generated Graph
+    else gFile.open(gIDstr+gAppend+".xml");             //The generated Graph
 
     tFile.open(gTypeFile);    //Type file
 
@@ -617,5 +629,26 @@ bailout:
     std::cout << "</Graphs>" << std::endl;
 
     gFile.close();
+    
+    //Open the files we need
+    cFile.open("plate.poets");        //The generated Graph
+    //Open the files we need
+    
+    cFile << "load /app = +\"";
+    cFile << ((gReplace != "")?(gReplace):(gIDstr+gAppend));
+    cFile << ".xml\"\n";
+    cFile << "tlink /app = *\n";
+    cFile << "place /constraint = \"MaxDevicesPerThread\", ";
+    cFile << (((nodeCount%6016)>0)?((nodeCount/6016)+1):(nodeCount/6016));
+    cFile << "\n";
+    cFile << "place /bucket = *\n";
+    cFile << "compose /app = *\n";
+    cFile << "deploy /app = *\n";
+    cFile << "initialise /app = *\n";
+    cFile << "run /app = *\n";
+    
+    std::cout << "Call file" << std::endl;
+    cFile.close();
+    
     return 0;
 }
