@@ -557,6 +557,7 @@
               
               DEBUG_PRINT("\tFINCOUNT:" << SUPSTATE(finCount) << "/" << SUPPROPERTIES(nodeCount) << " " << PKT(x) << "," << PKT(y));
               
+              /*
               //Periodic node count updates
               if(SUPSTATE(loopCount) == 0){
                 DEBUG_PRINT("\tNODES_DONE: " << SUPSTATE(finCount) << "/" << SUPPROPERTIES(nodeCount));
@@ -572,6 +573,7 @@
                 SUPSTATE(loopCount) = SUPPROPERTIES(loopMax);
               }
               SUPSTATE(loopCount)--;
+              */
 
               if(SUPSTATE(finCount) >= SUPPROPERTIES(nodeCount))
               { //All of the nodes have finished, do something.
@@ -626,6 +628,8 @@
                 
                 oFile.close();
                 DEBUG_PRINT("\tOFILE_CLOSE");
+                DEBUG_PRINT("\tPROBLEM COMPLETE in " << (
+                SUPSTATE(tEnd) - SUPSTATE(tStart)) << " seconds");
               }
             }
           ]]></OnReceive>

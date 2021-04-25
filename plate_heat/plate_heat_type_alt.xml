@@ -2,7 +2,6 @@
 
     <SharedCode><![CDATA[
     #include <stdlib.h>
-    #include <cmath>
 
     //#define LESSDEBUG
     //#define USEDEBUG
@@ -17,10 +16,7 @@
     uint32_t nodeCount = 100;
     ]]></Properties>
 
-    <MessageTypes> 
-    <MessageType id="heartbeat"><![CDATA[
-    ]]></MessageType>
-
+    <MessageTypes>
     <MessageType id="update"><![CDATA[
     float t;
     ]]></MessageType>
@@ -29,13 +25,10 @@
     uint32_t x;
     uint32_t y;
     float t;
-    uint32_t finIdx;
-    uint32_t nCnt;
-    uint32_t eCnt;
-    uint32_t sCnt;
-    uint32_t wCnt;
     uint32_t oCnt;
-    uint8_t fin;
+    uint32_t iCnt;
+    uint32_t fin;
+    uint32_t finIdx;
     ]]></MessageType>
     </MessageTypes>
 
@@ -48,58 +41,47 @@
         uint32_t dummy = 0;
         float minChg = 0.5;
         //float minChg = 0.03125;
-        uint16_t hcMax = HCMAX_DEF;
+        uint32_t idleMax = IDMAX_DEF;
         ]]></Properties>
 
         <State><![CDATA[
-        float t = 0.0;              // Our temperature
-        uint16_t hc = 0;            // Heartbeat Count
-        uint8_t updated = 0;
-        uint8_t active = 0;
-        uint8_t activeCount = 0;
-        uint8_t fin = 0;            // Finished Flag
-        uint8_t finSent = 0;        // Finished Sent Flag
-        uint16_t finIdx = 0;        // Finished Index
-
-        float tNorth = 0.0;         // North temperature
-        uint8_t nNorth = 0;         // Are we connected to the North? 
-                                    // Could be a property if we don't discover...
-
-        float tEast = 0.0;          // East temperature
-        uint8_t nEast = 0;          // Are we connected to the East?
-
-        float tSouth = 0.0;         // South temperature
-        uint8_t nSouth = 0;         // Are we connected to the South?
-
-        float tWest = 0.0;          // West temperature
-        uint8_t nWest = 0;          // Are we connected to the West?
-                  
-        uint32_t nCnt = 0;
-        uint32_t eCnt = 0;
-        uint32_t sCnt = 0;
-        uint32_t wCnt = 0;
+        float t = 0.0f;              // Our temperature
+        float tIn[4] = {0.0f};
+        uint32_t idleCnt = 0;       // Idle Count
+        uint32_t updated = 0;
+        uint32_t input = 0;
+        uint32_t active = 0;
+        uint32_t activeCount = 0;
+        uint32_t fin = 0;            // Finished Flag
+        uint32_t finIdx = 0;        // Finished Index
+        uint32_t finSent = 0;        // Finished Sent Flag
         uint32_t oCnt = 0;
+        uint32_t iCnt = 0;
         ]]></State>
 
         <SharedCode><![CDATA[
         #include "tinsel.h"
-        #include <stdint.h>
-        #include <math.h>
-
+        #include "math.h"
+        
         const float thirdMul = 1.0/3;
-
-        void updateTemp(void* state, const void* props)
+        
+        void updateTemp(PDeviceInstance* deviceInstance)
         {
-            devtyp_node_state_t* deviceState = static_cast<devtyp_node_state_t*>(state);
-            const devtyp_node_props_t* deviceProperties = static_cast<const devtyp_node_props_t*>(props);
+            devtyp_cell_state_t* deviceState = static_cast<
+                    devtyp_cell_state_t*>(deviceInstance->state);
+            const devtyp_cell_props_t* deviceProperties = static_cast<
+                    const devtyp_cell_props_t*>(deviceInstance->properties);
+            
+            uint32_t edgeCnt = deviceInstance->inputPins[0].numEdges;
+            
             float tCalc = 0;
-
-            tCalc += deviceState->tNorth;
-            tCalc += deviceState->tEast;
-            tCalc += deviceState->tSouth;
-            tCalc += deviceState->tWest;
-
-            switch(deviceState->activeCount){
+            
+            for(uint32_t e = 0; e < edgeCnt; e++)
+            {
+                tCalc += deviceState->tIn[e];
+            }
+            
+            switch(edgeCnt){
                 case 4:     tCalc = (tCalc*0.25);
                             break;
                 case 3:     tCalc = (tCalc*thirdMul); //0x3eaaaaab);
@@ -107,20 +89,16 @@
                 case 2:     tCalc = (tCalc*0.5);
                             break;
                 default:    break;   // 1 edge, no calc to do
-        }
+            }
 
-        //only update if the change in our temperature is large enough or we have not run yet
-        if((deviceState->active == 0) || (fabs(tCalc - deviceState->t) >= deviceProperties->minChg))
-        {
-            deviceState->hc = 0;
-            deviceState->fin = 0;
-            deviceState->t = tCalc;
-            deviceState->active = 0;
-            deviceState->updated = 1;
-            heartbeatIndex = 0;
-        }
-
-        //return tCalc;
+            //only update if the change in our temperature is large enough or we have not run yet
+            if((deviceState->active == 0) || (fabs(tCalc - deviceState->t) >= deviceProperties->minChg))
+            {
+                deviceState->fin = 0;
+                deviceState->t = tCalc;
+                deviceState->active = 1;
+                deviceState->updated = 1;
+            }
         }
         ]]></SharedCode>
 
@@ -134,12 +112,15 @@
         ]]></ReadyToSend>
 
         <OnDeviceIdle><![CDATA[
+        /* HACKS ABOUND: we manually throw a packet at ourselves to trigger a HB. */
         if(DEVICESTATE(input) > 0)
         {   // There is a pending update to recalculate
             DEVICESTATE(idleCnt) = 0;
-            recomputeDevice(deviceInstance);
+            DEVICESTATE(input) = 0;
+            //updateTemp(deviceState, deviceProperties);
+            updateTemp(deviceInstance);
         }
-        else
+        else if(DEVICESTATE(active) > 0)
         {
             DEVICESTATE(idleCnt++);
             if(DEVICESTATE(idleCnt) > DEVICEPROPERTIES(idleMax))
@@ -147,91 +128,26 @@
                 DEVICESTATE(fin) = 1;
             }
         }
-        
-        return(1);
         ]]></OnDeviceIdle>
 
-        <!-- Device State Handlers -->       
-        <InputPin name="north_in" messageTypeId="update">
+        <!-- Device State Handlers -->  
+        <InputPin name="in" messageTypeId="update">
+        <Properties><![CDATA[
+        uint32_t idx;
+        ]]></Properties>
+        
         <OnReceive><![CDATA[
-        #ifdef VERBOSEDEBUG
-            handler_log(2,"N_IN");
-        #endif
-            if(DEVICESTATE(nNorth) == 0)
-            {
-              DEVICESTATE(nNorth) = 1;
-              DEVICESTATE(activeCount)++;
-            }
-            
-            DEVICESTATE(tNorth) = PKT(t);
-            DEVICESTATE(active) = 1;
-            DEVICESTATE(nCnt)++;
-            //updateTemp(deviceState, deviceProperties);
-        ]]></OnReceive>
-        </InputPin>
-
-        <InputPin name="east_in" messageTypeId="update">
-        <OnReceive><![CDATA[
-        #ifdef VERBOSEDEBUG
-            handler_log(2,"E_IN");
-        #endif
-            if(DEVICESTATE(nEast) == 0)
-            {
-              DEVICESTATE(nEast) = 1;
-              DEVICESTATE(activeCount)++;
-            }
-            
-            DEVICESTATE(tEast) = PKT(t);
-            DEVICESTATE(active) = 1;
-            DEVICESTATE(eCnt++);
-            //updateTemp(deviceState, deviceProperties);
-        ]]></OnReceive>
-        </InputPin>
-
-        <InputPin name="south_in" messageTypeId="update">
-        <OnReceive><![CDATA[
-        #ifdef VERBOSEDEBUG
-            handler_log(2,"S_IN");
-        #endif
-            if(DEVICESTATE(nSouth) == 0)
-            {
-              DEVICESTATE(nSouth) = 1;
-              DEVICESTATE(activeCount)++;
-            }
-            
-            DEVICESTATE(tSouth) = PKT(t);
-            DEVICESTATE(active) = 1;
-            DEVICESTATE(sCnt)++;
-            //updateTemp(deviceState, deviceProperties);
-        ]]></OnReceive>
-        </InputPin>
-
-        <InputPin name="west_in" messageTypeId="update">
-        <OnReceive><![CDATA[
-        #ifdef VERBOSEDEBUG
-            handler_log(2,"W_IN");
-        #endif
-            if(DEVICESTATE(nWest) == 0)
-            {
-              DEVICESTATE(nWest) = 1;
-              DEVICESTATE(activeCount)++;
-            }
-            
-            DEVICESTATE(tWest) = PKT(t);
-            DEVICESTATE(active) = 1;
-            DEVICESTATE(wCnt)++;
-            //updateTemp(deviceState, deviceProperties);
+        DEVICESTATE(tIn[EDGEPROPERTIES(idx)]) = PKT(t);
+        DEVICESTATE(input) = 1;
+        DEVICESTATE(iCnt)++;
         ]]></OnReceive>
         </InputPin>
 
         <OutputPin name="out" messageTypeId="update">
         <OnSend><![CDATA[
-        #ifdef VERBOSEDEBUG
-            handler_log(2,"C_OUT");
-        #endif
-            PKT(t) = DEVICESTATE(t);
-            DEVICESTATE(oCnt)++;
-            DEVICESTATE(updated) = 0;
+        PKT(t) = DEVICESTATE(t);
+        DEVICESTATE(updated) = 0;
+        DEVICESTATE(oCnt)++;
         ]]></OnSend>
         </OutputPin>
         
@@ -244,32 +160,17 @@
             DEVICESTATE(finIdx)++;    //Increment BEFORE use!!!
             DEVICESTATE(finSent) = 1;
             message->fin = 1;
-        #ifdef USEDEBUG
-            handler_log(2,"FIN_SENT");
-        #endif
-        #ifdef LESSDEBUG
-            if(deviceInstance->deviceID == 0) {
-                handler_log(2,"FIN_SENT");
-            }
-        #endif
         } else {                  //Sent but finished cancelled
             DEVICESTATE(finSent) = 0;
             PKT(fin) = 0;
-        #ifdef USEDEBUG
-            handler_log(2,"FIN_CANCEL");
-        #endif
         }
         PKT(finIdx) = DEVICESTATE(finIdx);
         PKT(t) = DEVICESTATE(t);
+        PKT(oCnt) = DEVICESTATE(oCnt);
+        PKT(iCnt) = DEVICESTATE(iCnt);
 
         PKT(x) = DEVICEPROPERTIES(x);
         PKT(y) = DEVICEPROPERTIES(y);
-        
-        PKT(nCnt) = DEVICESTATE(nCnt);
-        PKT(eCnt) = DEVICESTATE(eCnt);
-        PKT(sCnt) = DEVICESTATE(sCnt);
-        PKT(wCnt) = DEVICESTATE(wCnt);
-        PKT(oCnt) = DEVICESTATE(oCnt);
         ]]></OnSend>
         </SupervisorOutPin>
         
@@ -281,27 +182,6 @@
         #endif
         ]]></OnSend>
         </OutputPin>
-
-        <InputPin name="heart_in" messageTypeId="heartbeat">
-        <OnReceive><![CDATA[
-            if(DEVICESTATE(active) && (DEVICESTATE(finSent)==0)) {
-                DEVICESTATE(hc)++;
-            
-        #ifdef VERBOSEDEBUG
-                handler_log(2,"HB_REC");
-        #endif
-
-                if(DEVICESTATE(hc) >= DEVICEPROPERTIES(hcMax))
-                {
-                    DEVICESTATE(fin) = 1;
-                }
-            } else {
-        #ifdef VERBOSEDEBUG
-                //handler_log(1,"HB_IGN");
-        #endif
-            }
-        ]]></OnReceive>
-        </InputPin>
     </DeviceType>
 
     <DeviceType id="fixedNode">
@@ -356,12 +236,6 @@
         PKT(x) = DEVICEPROPERTIES(x);
         PKT(y) = DEVICEPROPERTIES(y);
         
-        PKT(nCnt) = 0;
-        PKT(eCnt) = 0;
-        PKT(sCnt) = 0;
-        PKT(wCnt) = 0;
-        PKT(oCnt) = 1;
-        
         DEVICESTATE(finSent) = 1;
         
         #ifdef USEDEBUG
@@ -386,6 +260,7 @@
         #include <iomanip>
         #include <cmath>
         #include <vector>
+        #include <chrono>
         
         #define USEDEBUG
         //#define VERBOSEDEBUG
@@ -407,14 +282,11 @@
         
         typedef struct nodeDataType
         {
-            uint8_t fin = 0;
-            uint16_t finIdx = 0;
-            float t = 0.0;
-            uint32_t nCnt = 0;
-            uint32_t eCnt = 0;
-            uint32_t sCnt = 0;
-            uint32_t wCnt = 0;
+            uint32_t fin = 0;
+            uint32_t finIdx = 0;
             uint32_t oCnt = 0;
+            uint32_t iCnt = 0;
+            float t = 0.0f;
         } nodeData_t;
 
         ]]></Code>
@@ -431,10 +303,13 @@
         uint32_t loopCount = 0;
         
         uint32_t finCount = 0;
-        uint8_t finRec = 0;
+        uint32_t finRec = 0;
         
         time_t tStart;
         time_t tEnd;
+        
+        std::chrono::high_resolution_clock::time_point cStart;
+        std::chrono::high_resolution_clock::time_point cEnd;
         ]]></State>
         
 
@@ -460,11 +335,14 @@
                   //First rec, start timing.
                   SUPSTATE(finRec) = 1;
                   SUPSTATE(tStart) = std::time(NULL);
+                  SUPSTATE(cStart) = std::chrono::high_resolution_clock::now();
                   std::ofstream tFile;
                   std::ostringstream sst;
                   sst << "plate_" << SUPPROPERTIES(xSize) << "x" << SUPPROPERTIES(ySize) << "_time.txt";
                   tFile.open(sst.str());
-                  tFile << PKT(x) << "," << PKT(y) << ":" << SUPSTATE(tStart) << std::endl;
+                  tFile << PKT(x) << "," << PKT(y) << "\tEpoch: ";
+                  tFile << SUPSTATE(tStart) << "\t\t chrono: ";
+                  tFile << SUPSTATE(cStart).time_since_epoch().count()  << std::endl;
                   tFile.close();
                 }
 
@@ -473,12 +351,8 @@
                 SUPSTATE(data[loc].fin) = 1;
                 SUPSTATE(data[loc].finIdx) = PKT(finIdx);
                 SUPSTATE(data[loc].t) = PKT(t);
-                
-                SUPSTATE(data[loc].nCnt) = PKT(nCnt);
-                SUPSTATE(data[loc].eCnt) = PKT(eCnt);
-                SUPSTATE(data[loc].sCnt) = PKT(sCnt);
-                SUPSTATE(data[loc].wCnt) = PKT(wCnt);
                 SUPSTATE(data[loc].oCnt) = PKT(oCnt);
+                SUPSTATE(data[loc].iCnt) = PKT(iCnt);
                 
 
               } else if(!(PKT(fin)) && PKT(finIdx) >= SUPSTATE(data[loc].finIdx)) {
@@ -489,31 +363,18 @@
                 SUPSTATE(data[loc].fin) = 0;
                 SUPSTATE(data[loc].finIdx) = PKT(finIdx);
                 SUPSTATE(data[loc].t) = PKT(t);
-                
-                SUPSTATE(data[loc].nCnt) = PKT(nCnt);
-                SUPSTATE(data[loc].eCnt) = PKT(eCnt);
-                SUPSTATE(data[loc].sCnt) = PKT(sCnt);
-                SUPSTATE(data[loc].wCnt) = PKT(wCnt);
                 SUPSTATE(data[loc].oCnt) = PKT(oCnt);
+                SUPSTATE(data[loc].iCnt) = PKT(iCnt);
                 
               } else {//Otherwise do nothing with the finish message as it is a duplicate.
                 VERBOSE_PRINT("\tIGNORED:" << PKT(fin) << " " << PKT(x) << "," << PKT(y) << " IDX:" << PKT(finIdx));
               }
               
-              DEBUG_PRINT("\tFINCOUNT:" << SUPSTATE(finCount) << "/" << SUPPROPERTIES(nodeCount) << " " << PKT(x) << "," << PKT(y));
+              //DEBUG_PRINT("\tFINCOUNT:" << SUPSTATE(finCount) << "/" << SUPPROPERTIES(nodeCount) << " " << PKT(x) << "," << PKT(y));
               
               //Periodic node count updates
               if(SUPSTATE(loopCount) == 0){
                 DEBUG_PRINT("\tNODES_DONE: " << SUPSTATE(finCount) << "/" << SUPPROPERTIES(nodeCount));
-                
-                char buffer [100];
-                int cx;
-
-                cx = snprintf (buffer, 100, "NodesDone:%d/%d", SUPSTATE(finCount), SUPPROPERTIES(nodeCount));
-
-                if (cx>=0 && cx<100){
-                    //handler_log(2,buffer);
-                }
                 SUPSTATE(loopCount) = SUPPROPERTIES(loopMax);
               }
               SUPSTATE(loopCount)--;
@@ -523,12 +384,18 @@
               
                 //Last rec, Finish timing.
                 SUPSTATE(tEnd) = std::time(NULL);
+                SUPSTATE(cEnd) = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> diff = SUPSTATE(cEnd) - SUPSTATE(cStart);
+                
                 std::ofstream tFile;
                 std::ostringstream sst;
                 sst << "plate_" << SUPPROPERTIES(xSize) << "x" << SUPPROPERTIES(ySize) << "_time.txt";
                 tFile.open(sst.str(), std::ofstream::out | std::ofstream::app);
-                tFile << PKT(x) << "," << PKT(y) << ":" << SUPSTATE(tEnd) << "\tElapsed(s): ";
-                tFile << (SUPSTATE(tEnd) - SUPSTATE(tStart))<< std::endl;
+                tFile << PKT(x) << "," << PKT(y) << ":"  << "\tend Epoch: ";
+                tFile << SUPSTATE(tEnd) << "\t\t end chrono: ";
+                tFile << SUPSTATE(cEnd).time_since_epoch().count() << std::endl;
+                tFile << "\tElapsed(s): " << (SUPSTATE(tEnd)-SUPSTATE(tStart));
+                tFile << "\t(" << diff.count() << ")" << std::endl;                  
                 tFile.close();
 
                 DEBUG_PRINT("\tNODES_DONE: " << SUPSTATE(finCount));
@@ -546,8 +413,7 @@
                 //oFile.precision(2);
                 oFile << std::fixed << std::setprecision(2);
 
-                oFile << "x, y, temp, finCount, outCount, ";
-                oFile << "inCount, nInCount, eInCount, sInCount, wInCount";
+                oFile << "x, y, temp, finCount, outCount, inCount";
                 oFile << std::endl;
                 
                 DEBUG_PRINT("\tRESULTS_WRITE");
@@ -560,18 +426,8 @@
                     oFile << ix << ", " << iy << ", ";
                     oFile << SUPSTATE(data[loc].t)  << ", ";
                     oFile << SUPSTATE(data[loc].finIdx)  << ", ";
-                    
                     oFile << SUPSTATE(data[loc].oCnt)  << ", ";
-                    
-                    oFile << ( SUPSTATE(data[loc].nCnt)
-                             + SUPSTATE(data[loc].eCnt)
-                             + SUPSTATE(data[loc].sCnt)
-                             + SUPSTATE(data[loc].wCnt) ) << ", ";
-                    
-                    oFile << SUPSTATE(data[loc].nCnt)  << ", ";
-                    oFile << SUPSTATE(data[loc].eCnt)  << ", ";
-                    oFile << SUPSTATE(data[loc].sCnt)  << ", ";
-                    oFile << SUPSTATE(data[loc].wCnt)  << ", ";
+                    oFile << SUPSTATE(data[loc].iCnt);
                     oFile << std::endl;
                     loc++;
                   }
@@ -580,6 +436,10 @@
                 
                 oFile.close();
                 DEBUG_PRINT("\tOFILE_CLOSE");
+                DEBUG_PRINT("\tPROBLEM " << SUPPROPERTIES(xSize) << "x" <<
+                    SUPPROPERTIES(ySize) << " COMPLETE in " <<
+                    (SUPSTATE(tEnd) - SUPSTATE(tStart)) << " seconds (" <<
+                    diff.count() << "s)");
               }
             }
           ]]></OnReceive>
