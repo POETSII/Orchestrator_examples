@@ -1,0 +1,106 @@
+<?xml version="1.0"?>
+<!--
+This XML demonstrates that another compute thread can be spawned in the
+supervisor to perform a task for the application. The `std::thread` C++ model
+is used.
+
+The supervisor is the only (meaningful) device in this application. On
+intialisation, it spawns a compute thread, and yields control back to the
+Mothership (though the Mothership process invokes OnSupervisorIdle
+frequently). That compute thread continues to work on some state data
+(computing a prime number). When the compute thread is finished working, the
+supervisor identifies this in its OnSupervisorIdle handler by polling a state
+variable written to by the thread.
+
+For extra fun, you can try to stop the application once it's started (but
+before the thread joins). It doesn't segfault thanks to the OnStop logic - you
+must remember clean up your thread there if you want to adopt this technique
+for something else. Note that, for a given supervisor device, only one handler
+can be executed at a time. You don't need to worry about different handlers
+'racing' to join with a thread.
+
+The test result is created in the file "test_thread_spawning_supervisor", which
+contains zero, or a prime number on pass. The file doesn't exist on failure.
+-->
+<Graphs xmlns="" appname="test_thread_spawning_supervisor">
+  <GraphType id="test_thread_spawning_supervisor_type">
+    <Properties><![CDATA[
+unsigned long long maximum;  /* The prime number will be smaller than this. */
+    ]]></Properties>
+    <DeviceTypes>
+      <!-- A stub device is needed, in order to deploy the supervisor
+           somewhere. -->
+      <DeviceType id="stub"/>
+      <SupervisorType id="">
+        <Code><![CDATA[
+#include <climits>
+#include <stdio.h>
+#include <thread>
+
+/* Sieve of Eratosthenes, but not very efficiently because I'm lazy. Defines
+ * output as zero if no primes were found. */
+void Find_greatest_prime_number_less_than_max(unsigned long long max,
+                                              unsigned long long& output)
+{
+    /* Holds whether or not the value corresponding to the index in the vector
+     * is prime. */
+    std::vector<bool> primes(max, true);
+
+    /* The sieve itself. */
+    for (unsigned long long candidate = 2; candidate * candidate <= max;
+         candidate++)
+        if (primes[candidate])
+            for (unsigned long long multipleIndex = candidate * 2;
+                 multipleIndex <= max; multipleIndex += candidate)
+                primes[multipleIndex] = false;
+
+    /* Bind output to the last value, if any primes were found. */
+    for (decltype(primes)::reverse_iterator it = primes.rbegin();
+         it != primes.rend(); it++)
+        if (*it)
+        {
+            output = primes.size() - (it - primes.rbegin()) - 1;
+            return;
+        }
+    output = 0;
+}
+        ]]></Code>
+        <State><![CDATA[
+bool finished = false;
+unsigned long long prime = ULLONG_MAX;  /* Deliberately silly default value. */
+std::thread worker;
+        ]]></State>
+        <OnInit><![CDATA[
+/* Start the thread */
+supervisorState->worker = std::thread(
+    Find_greatest_prime_number_less_than_max,
+    graphProperties->maximum,
+    std::ref(supervisorState->prime));
+        ]]></OnInit>
+        <OnSupervisorIdle><![CDATA[
+/* If we've finished, don't do anything interesting. */
+if (!(supervisorState->finished) and
+    (supervisorState->prime < graphProperties->maximum))
+{
+    supervisorState->worker.join();
+    supervisorState->finished = true;  /* We only join once. */
+    FILE* outFile = fopen("test_thread_spawning_supervisor", "w");
+    fprintf(outFile, "%llu", supervisorState->prime);
+    fclose(outFile);
+}
+        ]]></OnSupervisorIdle>
+        <OnStop><![CDATA[
+/* Clean up thread, if it's running. */
+if (supervisorState->worker.joinable()) supervisorState->worker.join();
+        ]]></OnStop>
+      </SupervisorType>
+    </DeviceTypes>
+  </GraphType>
+  <GraphInstance id="test_thread_spawning_supervisor_instance"
+                 graphTypeId="test_thread_spawning_supervisor_type"
+                 P="1000000000"> <!-- 999999937 is prime -->
+    <DeviceInstances>
+      <DevI id="0" type="stub"/>
+    </DeviceInstances>
+  </GraphInstance>
+</Graphs>
