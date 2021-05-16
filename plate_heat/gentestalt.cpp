@@ -352,7 +352,7 @@ int main(int argc, const char * argv[]) {
     unsigned idleIdxScale;
     if(nodeCount<50000) {
         std::cout << "\t<50000" << std::endl;
-        idleIdxScale = 10000;
+        idleIdxScale = 15000;
     } else if(nodeCount<100000) {
         std::cout << "\t<100000" << std::endl;
         idleIdxScale = 30000;
