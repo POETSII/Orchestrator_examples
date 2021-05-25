@@ -1,0 +1,8 @@
+load /app = +"plate_33x33.xml"
+tlink /app = *
+place /constraint = "MaxDevicesPerThread", 1
+place /bucket = *
+compose /app = *
+deploy /app = *
+initialise /app = *
+run /app = *

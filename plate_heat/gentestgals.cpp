@@ -1,11 +1,10 @@
 /*============================================================================
- * Name        : gentest.cpp
+ * Name        : gentest2.cpp
  * Author      : Graeme Bragg
  * Version     : 0.4.00
- * Description : Generates an example heated plate that is solved with a
- *                 packet storm.
+ * Description : Generates an example heated plate that is solved with GALS.
  *                 Tested with C++17 (-std=c++17).
- *                 Requires the type file (<app>_type.xml) in the same directory.
+ *                 Requires the type file (<app>_type_gals2.xml) in the same directory.
  *                 An arbitrary number of fixed nodes can be specified in the fNodes
  *                 vector.
  *                 To minimise memory usage for very large graphs, the generator
@@ -16,7 +15,7 @@
  *                   * dimensions are specified as commandline arguments, with defaults
  *                     in YDEFAULT and XDEFAULT.
  *                   * Application name is set to plate_XxY and the type file is
- *                     plate_heat_type.xml.
+ *                     plate_heat_type_gals2.xml.
  *                   * Two fixed nodes are specified at 0,0 and XSIZE-1,YSIZE-1
  *============================================================================
  */
@@ -71,10 +70,6 @@ void writeDev(uint32_t x, uint32_t y, std::vector<fixedNode>& fNodes,
             gFile << "      <DevI id=\"dummy_" << x << "_" << y; 
             gFile << "\" type=\"cell\" P=\"" << x << "," << y << ",1\"/>";
             gFile << std::endl;
-
-            // Heartbeat Hack
-            eFile << "      <EdgeI path=\"dummy_" << x << "_" << y << ":heart_in-";
-            eFile << "dummy_" << x << "_" << y << ":heart_out\"/>" << std::endl;
         }
     } else {
         gFile << "      <DevI id=\"c_" << x << "_" << y;
@@ -87,46 +82,31 @@ void writeDev(uint32_t x, uint32_t y, std::vector<fixedNode>& fNodes,
 
         if(y < yMax-1) //North connection
         {
-            eFile << "      <EdgeI path=\"c_";
-            eFile << x << "_" << y << ":north_in-";
-            eFile << "c_" << x << "_" << (y + 1);
-            eFile << ":out\"/>";
+            eFile << "      <EdgeI path=\"c_" << x << "_" << y << ":in-";
+            eFile << "c_" << x << "_" << (y + 1) << ":out\" P=\"0\"/>";
             eFile << std::endl;
         }
 
         if(x < xMax-1) //East connection
         {
-            eFile << "      <EdgeI path=\"c_";
-            eFile << x << "_" << y << ":east_in-";
-            eFile << "c_" << (x + 1);
-            eFile << "_" << y << ":out\"/>";
+            eFile << "      <EdgeI path=\"c_"<< x << "_" << y << ":in-";
+            eFile << "c_" << (x + 1) << "_" << y << ":out\" P=\"1\"/>";
             eFile << std::endl;
         }
 
         if(y > 0)   //South connection
         {
-            eFile << "      <EdgeI path=\"c_";
-            eFile << x << "_" << y << ":south_in-";
-            eFile << "c_" << x << "_" << (y - 1);
-            eFile << ":out\"/>";
+            eFile << "      <EdgeI path=\"c_" << x << "_" << y << ":in-";
+            eFile << "c_" << x << "_" << (y - 1) << ":out\" P=\"2\"/>";
             eFile << std::endl;
         }
 
         if(x > 0)   //West connection
         {
-            eFile << "      <EdgeI path=\"c_";
-            eFile << x << "_" << y << ":west_in-";
-            eFile << "c_" << (x - 1);
-            eFile << "_" << y << ":out\"/>";
+            eFile << "      <EdgeI path=\"c_" << x << "_" << y << ":in-";
+            eFile << "c_" << (x - 1) << "_" << y << ":out\" P=\"3\"/>";
             eFile << std::endl;
         }
-    }
-    
-    if(!isFixed)
-    {
-        // Heartbeat Hack
-        eFile << "      <EdgeI path=\"c_" << x << "_" << y << ":heart_in-";
-        eFile << "c_" << x << "_" << y << ":heart_out\"/>" << std::endl;
     }
     eFile << std::endl;
 }
@@ -147,18 +127,16 @@ int main(int argc, const char * argv[]) {
     std::string gTypeFile;
     std::string gIDstr;
     std::string gAppend;
-    std::string gReplace;
     std::string gInstance;
 
     std::ofstream gFile;
     std::ifstream tFile;
     std::fstream eFile;
-    std::ofstream cFile;
     std::string line;
 
     //set the type name
     gType = std::string("plate_heat");
-    gTypeFile = gType+"_type.xml";
+    gTypeFile = gType+"_type_gals2.xml";
 
 
     //Handle arguments for X and Y
@@ -173,9 +151,8 @@ int main(int argc, const char * argv[]) {
     args::ValueFlag<float> mCh(optional, "float", "Set the minimum change in temperature required to trigger a message. Default = 0.5", {'m'});
     args::ValueFlag<float> tFx(optional, "float", "Set the temperature of the fixed nodes. Default = 100", {'t'});
     args::ValueFlag<int> fNo(optional, "int", "Fixed-node pattern. (0) 2 opposite corners, (1) 4 opposite corners. Default=0", {'f'});
-    args::ValueFlag<std::string> typF(optional, "filename", "Filename of the Type file, default=plate_heat_type.xml", {'g', "type"});
+    args::ValueFlag<std::string> typF(optional, "filename", "Filename of the Type file, default=plate_heat_type_gals2.xml", {'g', "type"});
     args::ValueFlag<std::string> oAppend(optional, "string", "String to append to the generated filename before .xml, default=\"\"", {'o'});
-    args::ValueFlag<std::string> oReplace(optional, "string", "String to use instead of the generated filename, default=\"\"", {'O'});
     args::ValueFlag<int> sq(optional, "int", "Squares: Set whether devices are generated linearly (0) or in blocks (1 = thread-level, 2 = box-level), default = 0", {'s'});
     args::ValueFlag<int> sd(optional, "int", "Square Dimension - used to set the x & y dimension of the square size, default = 32 (e.g. 1024 devices)", {'u', "sd"});
     args::ValueFlag<int> tMC(optional, "int", "Set the maximum number of threads (used for Supervisor Instrumentation Array sizing). Default = 49152", {"ThreadMaxCount"});
@@ -251,14 +228,6 @@ int main(int argc, const char * argv[]) {
         gAppend = "";
     }
     
-    //String to append to output filename
-    if(oReplace)
-    {
-        gReplace = args::get(oReplace);
-    } else {
-        gReplace = "";
-    }
-    
     //Define the crude mapping
     if(sq)
     {
@@ -331,8 +300,7 @@ int main(int argc, const char * argv[]) {
     gIDstr = ssID.str();
 
     //Open the files we need
-    if(gReplace != "") gFile.open(gReplace+".xml");     //The generated Graph
-    else gFile.open(gIDstr+gAppend+".xml");             //The generated Graph
+    gFile.open(gIDstr+gAppend+".xml");        //The generated Graph
 
     tFile.open(gTypeFile);    //Type file
 
@@ -629,26 +597,5 @@ bailout:
     std::cout << "</Graphs>" << std::endl;
 
     gFile.close();
-    
-    //Open the files we need
-    cFile.open("plate.poets");        //The generated Graph
-    //Open the files we need
-    
-    cFile << "load /app = +\"";
-    cFile << ((gReplace != "")?(gReplace):(gIDstr+gAppend));
-    cFile << ".xml\"\n";
-    cFile << "tlink /app = *\n";
-    cFile << "place /constraint = \"MaxDevicesPerThread\", ";
-    cFile << (((nodeCount%6016)>0)?((nodeCount/6016)+1):(nodeCount/6016));
-    cFile << "\n";
-    cFile << "place /bucket = *\n";
-    cFile << "compose /app = *\n";
-    cFile << "deploy /app = *\n";
-    cFile << "initialise /app = *\n";
-    cFile << "run /app = *\n";
-    
-    std::cout << "Call file" << std::endl;
-    cFile.close();
-    
     return 0;
 }

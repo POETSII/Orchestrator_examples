@@ -71,10 +71,6 @@ void writeDev(uint32_t x, uint32_t y, std::vector<fixedNode>& fNodes,
             gFile << "      <DevI id=\"dummy_" << x << "_" << y; 
             gFile << "\" type=\"cell\" P=\"" << x << "," << y << ",1\"/>";
             gFile << std::endl;
-
-            // Heartbeat Hack
-            eFile << "      <EdgeI path=\"dummy_" << x << "_" << y << ":heart_in-";
-            eFile << "dummy_" << x << "_" << y << ":heart_out\"/>" << std::endl;
         }
     } else {
         gFile << "      <DevI id=\"c_" << x << "_" << y;
@@ -84,49 +80,48 @@ void writeDev(uint32_t x, uint32_t y, std::vector<fixedNode>& fNodes,
             gFile << "," << minChg;
         }
         gFile << "\"/>" << std::endl;
+        
+        uint32_t eCnt = 0;
 
         if(y < yMax-1) //North connection
         {
             eFile << "      <EdgeI path=\"c_";
-            eFile << x << "_" << y << ":north_in-";
+            eFile << x << "_" << y << ":in-";
             eFile << "c_" << x << "_" << (y + 1);
-            eFile << ":out\"/>";
+            eFile << ":out\" P=\"" << eCnt << "\"/>";
             eFile << std::endl;
+            eCnt++;
         }
 
         if(x < xMax-1) //East connection
         {
             eFile << "      <EdgeI path=\"c_";
-            eFile << x << "_" << y << ":east_in-";
-            eFile << "c_" << (x + 1);
-            eFile << "_" << y << ":out\"/>";
+            eFile << x << "_" << y << ":in-";
+            eFile << "c_" << (x + 1) << "_" << y;
+            eFile << ":out\" P=\"" << eCnt << "\"/>";
             eFile << std::endl;
+            eCnt++;
         }
 
         if(y > 0)   //South connection
         {
             eFile << "      <EdgeI path=\"c_";
-            eFile << x << "_" << y << ":south_in-";
+            eFile << x << "_" << y << ":in-";
             eFile << "c_" << x << "_" << (y - 1);
-            eFile << ":out\"/>";
+            eFile << ":out\" P=\"" << eCnt << "\"/>";
             eFile << std::endl;
+            eCnt++;
         }
 
         if(x > 0)   //West connection
         {
             eFile << "      <EdgeI path=\"c_";
-            eFile << x << "_" << y << ":west_in-";
-            eFile << "c_" << (x - 1);
-            eFile << "_" << y << ":out\"/>";
+            eFile << x << "_" << y << ":in-";
+            eFile << "c_" << (x - 1) << "_" << y;
+            eFile << ":out\" P=\"" << eCnt << "\"/>";
             eFile << std::endl;
+            eCnt++;
         }
-    }
-    
-    if(!isFixed)
-    {
-        // Heartbeat Hack
-        eFile << "      <EdgeI path=\"c_" << x << "_" << y << ":heart_in-";
-        eFile << "c_" << x << "_" << y << ":heart_out\"/>" << std::endl;
     }
     eFile << std::endl;
 }
@@ -141,7 +136,7 @@ int main(int argc, const char * argv[]) {
     float fixTmp;
     int fixPat;
     
-    int hbOver, idleOver;
+    int idleOver;
 
     std::string gType;
     std::string gTypeFile;
@@ -158,7 +153,7 @@ int main(int argc, const char * argv[]) {
 
     //set the type name
     gType = std::string("plate_heat");
-    gTypeFile = gType+"_type.xml";
+    gTypeFile = gType+"_type_alt.xml";
 
 
     //Handle arguments for X and Y
@@ -180,7 +175,6 @@ int main(int argc, const char * argv[]) {
     args::ValueFlag<int> sd(optional, "int", "Square Dimension - used to set the x & y dimension of the square size, default = 32 (e.g. 1024 devices)", {'u', "sd"});
     args::ValueFlag<int> tMC(optional, "int", "Set the maximum number of threads (used for Supervisor Instrumentation Array sizing). Default = 49152", {"ThreadMaxCount"});
     args::ValueFlag<int> idleIn(optional, "int", "Set the OnIdle count required to trigger a HB, default >=1000 (scales with problem size)", {'i'});
-    args::ValueFlag<int> hbIn(optional, "int", "Set the HB count required to trigger a finish message, default = 10", {'z', "hb"});
 
 
     try
@@ -295,19 +289,12 @@ int main(int argc, const char * argv[]) {
     }
     
     
-    // Setup heartbeat override
+    // Setup IsleMax override
     if(idleIn)
     {
         idleOver = args::get(idleIn);
     } else {
         idleOver = 0;
-    }
-    
-    if(hbIn)
-    {
-        hbOver = args::get(hbIn);
-    } else {
-        hbOver = 0;
     }
 
     nodeCount = xMax * yMax;
@@ -362,54 +349,39 @@ int main(int argc, const char * argv[]) {
     //std::cout << "<Graphs xmlns=\"https://poets-project.org/schemas/virtual-graph-schema-v4\">" << std::endl;
 
 
-    unsigned hcMaxScale, hbIdxScale;
+    unsigned idleIdxScale;
     if(nodeCount<50000) {
-        std::cout << "\t<1000" << std::endl;
-        hbIdxScale = 1000;
-        hcMaxScale = 10;
+        std::cout << "\t<50000" << std::endl;
+        idleIdxScale = 15000;
     } else if(nodeCount<100000) {
         std::cout << "\t<100000" << std::endl;
-        hbIdxScale = 2000;
-        hcMaxScale = 10;
-    } else if(nodeCount<100000) {
-        std::cout << "\t<100000" << std::endl;
-        hbIdxScale = 5000;
-        hcMaxScale = 10;
+        idleIdxScale = 30000;
     } else if(nodeCount<700000) {
         std::cout << "\t<700000" << std::endl;
-        hbIdxScale = 5000;
-        hcMaxScale = 10;
+        idleIdxScale = 40000;
     } else if (nodeCount<1000000) {
         std::cout << "\t<1000000" << std::endl;
-        hbIdxScale = 7000; 
-        hcMaxScale = 10;
+        idleIdxScale = 50000;
     } else {
         std::cout << "\t>1000000" << std::endl;
-        hbIdxScale = 2000;
-        hcMaxScale = 10;
-    }
-    
-    if(hbOver > 0)
-    {
-        hcMaxScale = hbOver;
+        idleIdxScale = 60000;
     }
     
     if(idleOver > 0)
     {
-        hbIdxScale = idleOver;
+        idleIdxScale = idleOver;
     }
 
     //Copy graph type into graph instance.
     std::cout << "<GraphType id=\"" << gType << "\" >" << std::endl;
     while(std::getline(tFile, line))
     {
-        std::size_t XSIZE_pos, YSIZE_pos, NODE_pos, HCMAX_pos, HBIDX_pos, THREAD_pos;
+        std::size_t XSIZE_pos, YSIZE_pos, NODE_pos, IDMAX_pos, THREAD_pos;
 
         std::string XSIZE_str ("XSIZE_DEF");
         std::string YSIZE_str ("YSIZE_DEF");
         std::string NODE_str ("NODE_DEF");
-        std::string HCMAX_str ("HCMAX_DEF");
-        std::string HBIDX_str ("HBIDX_DEF");
+        std::string IDMAX_str ("IDMAX_DEF");
         std::string THREAD_str ("THREAD_DEF");
 
         XSIZE_pos = line.find(XSIZE_str);
@@ -430,16 +402,10 @@ int main(int argc, const char * argv[]) {
             line.replace(NODE_pos, NODE_str.length(), std::to_string(nodeCount));
         }
 
-        HCMAX_pos = line.find(HCMAX_str);
-        if (HCMAX_pos != std::string::npos){
+        IDMAX_pos = line.find(IDMAX_str);
+        if (IDMAX_pos != std::string::npos){
             // Line contains HCMAX_DEF - replace with 
-            line.replace(HCMAX_pos, HCMAX_str.length(), std::to_string(hcMaxScale));
-        }
-
-        HBIDX_pos = line.find(HBIDX_str);
-        if (HBIDX_pos != std::string::npos){
-            // Line contains HBIDX_DEF - replace with 
-            line.replace(HBIDX_pos, HBIDX_str.length(), std::to_string(hbIdxScale));
+            line.replace(IDMAX_pos, IDMAX_str.length(), std::to_string(idleIdxScale));
         }
         
         THREAD_pos = line.find(THREAD_str);

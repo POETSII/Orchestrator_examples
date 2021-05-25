@@ -1,10 +1,3 @@
-<?xml version="1.0"?>
-<!-- Generated using the POETS Orchestrator plate_heat example generator.
-		Available from https://github.com/POETSII/Orchestrator_examples
-		This file can be regenerated with:
-			./gentestalt -f0 -s0 -t1000 -m0.03125 -d3 
--->
-<Graphs xmlns="" appname="PlateHeat">
   <GraphType id="plate_heat">
 
     <SharedCode><![CDATA[
@@ -63,7 +56,7 @@
         uint32_t eEn = 0;         // Supervisor Echo enabled flag
 #endif
         //float minChg = 0.03125;
-        uint32_t idleMax = 15000;
+        uint32_t idleMax = IDMAX_DEF;
         ]]></Properties>
 
         <State><![CDATA[
@@ -376,14 +369,14 @@
         ]]></Code>
         
         <Properties><![CDATA[
-        uint32_t xSize = 3;
-        uint32_t ySize = 3;
-        uint32_t nodeCount = 9;
+        uint32_t xSize = XSIZE_DEF;
+        uint32_t ySize = YSIZE_DEF;
+        uint32_t nodeCount = NODE_DEF;
         uint32_t loopMax = 1000;
         ]]></Properties>
             
         <State><![CDATA[
-        std::vector<nodeData_t> data = std::vector<nodeData_t>(9);
+        std::vector<nodeData_t> data = std::vector<nodeData_t>(NODE_DEF);
         uint32_t loopCount = 0;
         
         uint32_t finCount = 0;
@@ -397,7 +390,7 @@
         ]]></State>
         
 
-        <!-- 3, 3 and 9 are replaced by the generator. -->
+        <!-- XSIZE_DEF, YSIZE_DEF and NODE_DEF are replaced by the generator. -->
         <!-- This is a complete hack and needs some thought in how to parameterise. -->
         <SupervisorInPin id="finished" messageTypeId="finished">
           <OnReceive><![CDATA[
@@ -565,49 +558,3 @@
     </SupervisorType>
     </DeviceTypes>
   </GraphType>
-
-  <GraphInstance id="plate_3x3" graphTypeId="plate_heat" P="3,3,9">
-    <DeviceInstances>
-      <DevI id="c_0_0" type="fixedNode" P="1000.000000,0,0"/>
-      <DevI id="c_0_1" type="cell" P="0,1,0,0.031250"/>
-      <DevI id="c_0_2" type="cell" P="0,2,0,0.031250"/>
-      <DevI id="c_1_0" type="cell" P="1,0,0,0.031250"/>
-      <DevI id="c_1_1" type="cell" P="1,1,0,0.031250"/>
-      <DevI id="c_1_2" type="cell" P="1,2,0,0.031250"/>
-      <DevI id="c_2_0" type="cell" P="2,0,0,0.031250"/>
-      <DevI id="c_2_1" type="cell" P="2,1,0,0.031250"/>
-      <DevI id="c_2_2" type="fixedNode" P="-1000.000000,2,2"/>
-    </DeviceInstances>
-    <EdgeInstances>
-
-      <EdgeI path="c_0_1:in-c_0_2:out" P="0"/>
-      <EdgeI path="c_0_1:in-c_1_1:out" P="1"/>
-      <EdgeI path="c_0_1:in-c_0_0:out" P="2"/>
-
-      <EdgeI path="c_0_2:in-c_1_2:out" P="0"/>
-      <EdgeI path="c_0_2:in-c_0_1:out" P="1"/>
-
-      <EdgeI path="c_1_0:in-c_1_1:out" P="0"/>
-      <EdgeI path="c_1_0:in-c_2_0:out" P="1"/>
-      <EdgeI path="c_1_0:in-c_0_0:out" P="2"/>
-
-      <EdgeI path="c_1_1:in-c_1_2:out" P="0"/>
-      <EdgeI path="c_1_1:in-c_2_1:out" P="1"/>
-      <EdgeI path="c_1_1:in-c_1_0:out" P="2"/>
-      <EdgeI path="c_1_1:in-c_0_1:out" P="3"/>
-
-      <EdgeI path="c_1_2:in-c_2_2:out" P="0"/>
-      <EdgeI path="c_1_2:in-c_1_1:out" P="1"/>
-      <EdgeI path="c_1_2:in-c_0_2:out" P="2"/>
-
-      <EdgeI path="c_2_0:in-c_2_1:out" P="0"/>
-      <EdgeI path="c_2_0:in-c_1_0:out" P="1"/>
-
-      <EdgeI path="c_2_1:in-c_2_2:out" P="0"/>
-      <EdgeI path="c_2_1:in-c_2_0:out" P="1"/>
-      <EdgeI path="c_2_1:in-c_1_1:out" P="2"/>
-
-
-    </EdgeInstances>
-  </GraphInstance>
-</Graphs>
