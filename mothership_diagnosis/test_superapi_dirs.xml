@@ -24,7 +24,7 @@ contains a zero on pass and non-zero on failure.
   <GraphType id="test_superapi_dirs_type">
     <DeviceTypes>
       <DeviceType id="stub"/>
-      <SupervisorType id="">
+      <SupervisorType>
         <Code><![CDATA[
 #include <stdio.h>
         ]]></Code>

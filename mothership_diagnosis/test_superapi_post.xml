@@ -15,7 +15,7 @@ The application should also stop itself.
   <GraphType id="test_superapi_post_type">
     <DeviceTypes>
       <DeviceType id="stub"/>
-      <SupervisorType id="" SupervisorInPin="pull">
+      <SupervisorType>
         <State><![CDATA[
 bool posted = false;
         ]]></State>

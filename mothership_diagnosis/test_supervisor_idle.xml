@@ -22,7 +22,7 @@ the file I/O.
       <!-- A stub device is needed, in order to deploy the supervisor
            somewhere. -->
       <DeviceType id="stub"/>
-      <SupervisorType id="">
+      <SupervisorType>
         <Code><![CDATA[
 #include <stdio.h>
 #include <unistd.h>

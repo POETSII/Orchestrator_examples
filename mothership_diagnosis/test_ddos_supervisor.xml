@@ -51,7 +51,7 @@ deviceState->tick = deviceState->tick + 1;
           ]]></OnSend>
         </SupervisorOutPin>
       </DeviceType>
-      <SupervisorType id="" SupervisorInPin="pull">
+      <SupervisorType>
         <Code><![CDATA[
 #include <stdio.h>
         ]]></Code>
@@ -62,7 +62,7 @@ FILE* resultFile;
 supervisorState->resultFile = fopen("test_ddos_supervisor_packets_processed",
                                     "a");
         ]]></OnInit>
-        <SupervisorInPin id="pull" messageTypeId="simple">
+        <SupervisorInPin messageTypeId="simple">
           <OnReceive><![CDATA[
 fprintf(supervisorState->resultFile, "%u,%u\n", message->id, message->content);
 fflush(supervisorState->resultFile);  /* Make it inefficient */
