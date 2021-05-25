@@ -51,7 +51,7 @@ deviceState->tick = deviceState->tick + 1;
           ]]></OnSend>
         </SupervisorOutPin>
       </DeviceType>
-      <SupervisorType>
+      <SupervisorType id="">
         <Code><![CDATA[
 #include <stdio.h>
         ]]></Code>
