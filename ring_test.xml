@@ -122,7 +122,7 @@ return deviceState->sendMessage;
         ]]></OnInit>
       </DeviceType>
 
-      <SupervisorType id="" SupervisorInPin="tracker">
+      <SupervisorType id="">
         <!-- There is one supervisor device type in a given application. This
              particular supervisor is written assuming there is only one
              instance for simplicity.
@@ -148,7 +148,7 @@ supervisorState->messagesPerDevice = \
     std::vector<uint8_t>(graphProperties->numDevices, 0);
 supervisorState->resultFile = fopen("ring_test_output", "w");
         ]]></OnInit>
-        <SupervisorInPin id="tracker" messageTypeId="exfiltration">
+        <SupervisorInPin id="" messageTypeId="exfiltration">
           <OnReceive><![CDATA[
 /* If the application has failed, don't act on any more messages. */
 if (!supervisorState->failed)

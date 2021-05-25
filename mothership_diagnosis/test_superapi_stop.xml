@@ -34,14 +34,14 @@ return 1;
           ]]></OnSend>
         </SupervisorOutPin>
       </DeviceType>
-      <SupervisorType id="" SupervisorInPin="pull">
+      <SupervisorType id="">
         <Code><![CDATA[
 #include <stdio.h>
         ]]></Code>
         <State><![CDATA[
 uint32_t packetCount = 0;
         ]]></State>
-        <SupervisorInPin id="pull" messageTypeId="simple">
+        <SupervisorInPin id="" messageTypeId="simple">
           <OnReceive><![CDATA[
 if (supervisorState->packetCount == 0) Super::stop_application();
 supervisorState->packetCount++;

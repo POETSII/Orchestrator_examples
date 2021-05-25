@@ -48,14 +48,14 @@ deviceState->tick = deviceState->tick + 1;
           ]]></OnSend>
         </SupervisorOutPin>
       </DeviceType>
-      <SupervisorType id="" SupervisorInPin="pull">
+      <SupervisorType id="">
         <Code><![CDATA[
 #include <stdio.h>
         ]]></Code>
         <State><![CDATA[
 uint8_t packetCount = 0;
         ]]></State>
-        <SupervisorInPin id="pull" messageTypeId="simple">
+        <SupervisorInPin id="" messageTypeId="simple">
           <OnReceive><![CDATA[
 FILE* resultFile = fopen("test_packet_to_supervisor_result", "w");
 if (supervisorState->packetCount == 0)

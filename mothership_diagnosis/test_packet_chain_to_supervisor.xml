@@ -140,7 +140,7 @@ else if (deviceState->supSendRight == 1)
           ]]></OnSend>
         </SupervisorOutPin>
       </DeviceType>
-      <SupervisorType id="" SupervisorInPin="pull">
+      <SupervisorType id="">
         <Code><![CDATA[
 #include <stdio.h>
         ]]></Code>
@@ -149,7 +149,7 @@ uint8_t failed = 0;
 uint8_t firstSent[3] = {0, 0, 0};
 uint8_t secondSent[3] = {0, 0, 0};
         ]]></State>
-        <SupervisorInPin id="pull" messageTypeId="simple">
+        <SupervisorInPin id="" messageTypeId="simple">
           <OnReceive><![CDATA[
           /* Do nothing if we've failed already. */
           if (supervisorState->failed == 0) {
