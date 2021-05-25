@@ -62,7 +62,7 @@ FILE* resultFile;
 supervisorState->resultFile = fopen("test_ddos_supervisor_packets_processed",
                                     "a");
         ]]></OnInit>
-        <SupervisorInPin messageTypeId="simple">
+        <SupervisorInPin id="" messageTypeId="simple">
           <OnReceive><![CDATA[
 fprintf(supervisorState->resultFile, "%u,%u\n", message->id, message->content);
 fflush(supervisorState->resultFile);  /* Make it inefficient */

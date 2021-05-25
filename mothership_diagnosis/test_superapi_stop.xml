@@ -41,7 +41,7 @@ return 1;
         <State><![CDATA[
 uint32_t packetCount = 0;
         ]]></State>
-        <SupervisorInPin messageTypeId="simple">
+        <SupervisorInPin id="" messageTypeId="simple">
           <OnReceive><![CDATA[
 if (supervisorState->packetCount == 0) Super::stop_application();
 supervisorState->packetCount++;
