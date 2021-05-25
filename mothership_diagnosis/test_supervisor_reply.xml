@@ -1,0 +1,125 @@
+<?xml version="1.0"?>
+<!--
+This XML demonstrates that:
+
+ - A normal device can send a single packet to the application's supervisor
+   device when the application is started.
+
+ - The Supervisor can reply to this packet .
+
+ - A normal device can then send another packet, starting the cycle again.
+ 
+ - This repeats until the Supervisor receives a ping with an index greater than
+   GlobalProperties->pingCntMax. When this occurs, the Supervisor calls 
+   Super::stop_application().
+   
+ - The Supervisor writes exceptions and a results summary to supreply.txt in the
+   execution directory. In a successful test, there should be one line:
+  
+       Last packet received. Expected: <COUNT> packets 	Got: <COUNT> packets.
+   where <COUNT> is equal to GlobalProperties->pingCntMax plus one.
+-->
+<Graphs xmlns="" appname="test_reply_from_supervisor">
+  <GraphType id="test_reply_from_supervisor_type">
+    <Properties><![CDATA[
+        uint32_t pingCntMax = 10;
+    ]]></Properties>
+    
+    <MessageTypes>
+      <MessageType id="ping"><![CDATA[
+        uint32_t pingCnt;
+      ]]></MessageType>
+    </MessageTypes>
+    
+    <DeviceTypes>
+      <DeviceType id="normal">
+        <State><![CDATA[
+            uint32_t pingCnt = 0;
+            uint32_t pingPend = 1;
+        ]]></State>
+                  
+        <ReadyToSend><![CDATA[
+            if(DEVICESTATE(pingPend) > 0) RTSSUP();
+        ]]></ReadyToSend>
+        
+        <SupervisorOutPin messageTypeId="ping">
+          <OnSend><![CDATA[
+            PKT(pingCnt) = DEVICESTATE(pingCnt)++;
+            
+            DEVICESTATE(pingPend) = 0;
+          ]]></OnSend>
+        </SupervisorOutPin>
+        
+        <SupervisorInPin messageTypeId="ping">
+          <OnReceive><![CDATA[
+            DEVICESTATE(pingPend) = 1;
+          ]]></OnReceive>
+        </SupervisorInPin>
+      </DeviceType>
+      
+      <SupervisorType id="supervisorNode">
+        <State><![CDATA[
+          int64_t lastPing = -1;
+          int64_t pingCnt = 0;
+        ]]></State>
+        
+        <Code><![CDATA[
+          #include <fstream>
+          #include <iostream>
+          #include <sstream>
+          #include <string>
+          #include <cstdio>
+          #include <iomanip>
+
+          std::ofstream oFile;
+        ]]></Code>
+        
+        <OnInit><![CDATA[
+            oFile.open("supreply.txt");
+        ]]></OnInit>
+        
+        <SupervisorInPin id="pingIn" messageTypeId="ping">
+          <OnReceive><![CDATA[
+            //std::cout << "Ping RX: " << PKT(pingCnt);
+            //std::cout << std::endl;          
+          
+            if(PKT(pingCnt) != (SUPSTATE(lastPing) + 1))
+            {
+                oFile << "***Missed a ping***: ";
+                oFile << "Expected " << (SUPSTATE(lastPing) + 1);
+                oFile << "\tGot " << PKT(pingCnt) << std::endl;
+            }
+            
+            SUPSTATE(lastPing) = PKT(pingCnt);
+            SUPSTATE(pingCnt)++;
+            
+            if(PKT(pingCnt) < GRAPHPROPERTIES(pingCntMax))
+            {
+                // Send a reply to the source device.
+                REPLY(pingCnt) = PKT(pingCnt);
+                RTSREPLY();
+            }
+            else
+            {
+                oFile << "Last packet received. ";
+                oFile << "Expected: " << (GRAPHPROPERTIES(pingCntMax) + 1);
+                oFile << " packets \tGot: " << SUPSTATE(pingCnt);
+                oFile << " packets." << std::endl;
+                Super::stop_application();
+            }
+          ]]></OnReceive>
+        </SupervisorInPin>
+        
+        <OnStop><![CDATA[
+            oFile.close();
+        ]]></OnStop>
+      </SupervisorType>
+      
+    </DeviceTypes>
+   </GraphType>
+  <GraphInstance id="test_reply_from_supervisor_inst" graphTypeId="test_reply_from_supervisor_type">
+    <DeviceInstances>
+      <DevI id="s0000" type="normal"/>
+    </DeviceInstances>
+  </GraphInstance>
+</Graphs>
