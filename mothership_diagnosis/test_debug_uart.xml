@@ -30,9 +30,9 @@ different hardware addresses (depending on where they are placed):
 uint8_t spoken = 0;
         ]]></State>
         <OnDeviceIdle><![CDATA[
-if (deviceState->spoken == 0)
+if (DEVICESTATE(spoken) == 0)
 {
-    deviceState->spoken = 1;
+    DEVICESTATE(spoken) = 1;
     tinselUartTryPut(170);  /* AA */
     tinselUartTryPut(187);  /* BB */
 }
@@ -44,9 +44,9 @@ return 0;
 uint8_t spoken = 0;
         ]]></State>
         <OnDeviceIdle><![CDATA[
-if (deviceState->spoken == 0)
+if (DEVICESTATE(spoken) == 0)
 {
-    deviceState->spoken = 1;
+    DEVICESTATE(spoken) = 1;
     tinselUartTryPut(204);  /* CC */
 }
 return 0;

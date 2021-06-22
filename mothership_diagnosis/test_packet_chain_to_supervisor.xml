@@ -62,80 +62,80 @@ uint8_t sendLeft = 0;
 uint8_t supSendLeft = 0;
         ]]></State>
         <ReadyToSend><![CDATA[
-if (deviceState->sendRight == 1)
+if (DEVICESTATE(sendRight) == 1)
 {
-    *readyToSend |= RTS_FLAG_send_right;
+    RTS(send_right);
 }
-if (deviceState->sendLeft == 1)
+if (DEVICESTATE(sendLeft) == 1)
 {
-    *readyToSend |= RTS_FLAG_send_left;
+    RTS(send_left);
 }
-if (deviceState->supSendRight == 1 or deviceState->supSendLeft == 1)
+if (DEVICESTATE(supSendRight) == 1 or DEVICESTATE(supSendLeft) == 1)
 {
-    *readyToSend |= RTS_SUPER_IMPLICIT_SEND_FLAG;
+    RTSSUP();
 }
         ]]></ReadyToSend>
         <OnDeviceIdle><![CDATA[
-return deviceState->sendRight;  /* Initial packet from N0. */
+return DEVICESTATE(sendRight);  /* Initial packet from N0. */
         ]]></OnDeviceIdle>
         <InputPin name="recv_left" messageTypeId="simple">
           <OnReceive><![CDATA[
-if (message->content == 47)
+if (PKT(content) == 47)
 {
-    if (deviceProperties->id == 2)
+    if (DEVICEPROPERTIES(id) == 2)
     {
-        deviceState->sendLeft = 1;
-        deviceState->supSendLeft = 1;
+        DEVICESTATE(sendLeft) = 1;
+        DEVICESTATE(supSendLeft) = 1;
     }
     else
     {
-        deviceState->sendRight = 1;
-        deviceState->supSendRight = 1;
+        DEVICESTATE(sendRight) = 1;
+        DEVICESTATE(supSendRight) = 1;
     }
 }
           ]]></OnReceive>
         </InputPin>
         <InputPin name="recv_right" messageTypeId="simple">
           <OnReceive><![CDATA[
-if (message->content == 208)
+if (PKT(content) == 208)
 {
-    if (deviceProperties->id != 0)
+    if (DEVICEPROPERTIES(id) != 0)
     {
-        deviceState->sendLeft = 1;
-        deviceState->supSendLeft = 1;
+        DEVICESTATE(sendLeft) = 1;
+        DEVICESTATE(supSendLeft) = 1;
     }
 }
           ]]></OnReceive>
         </InputPin>
         <OutputPin name="send_left" messageTypeId="simple">
           <OnSend><![CDATA[
-message->id = deviceProperties->id;
-message->content = 208;
+PKT(id) = DEVICEPROPERTIES(id);
+PKT(content) = 208;
 
-deviceState->sendLeft = 0;
+DEVICESTATE(sendLeft) = 0;
           ]]></OnSend>
         </OutputPin>
         <OutputPin name="send_right" messageTypeId="simple">
           <OnSend><![CDATA[
-message->id = deviceProperties->id;
-message->content = 47;
+PKT(id) = DEVICEPROPERTIES(id);
+PKT(content) = 47;
 
-deviceState->sendRight = 0;
+DEVICESTATE(sendRight) = 0;
           ]]></OnSend>
         </OutputPin>
         <SupervisorOutPin messageTypeId="simple">
           <OnSend><![CDATA[
-if (deviceState->supSendLeft == 1)
+if (DEVICESTATE(supSendLeft) == 1)
 {
-    message->id = deviceProperties->id;
-    message->content = 208;
-    deviceState->supSendLeft = 0;
+    PKT(id) = DEVICEPROPERTIES(id);
+    PKT(content) = 208;
+    DEVICESTATE(supSendLeft) = 0;
 }
-else if (deviceState->supSendRight == 1)
+else if (DEVICESTATE(supSendRight) == 1)
 {
-    message->id = deviceProperties->id;
-    message->content = 47;
-    deviceState->supSendRight = 0;
+    PKT(id) = DEVICEPROPERTIES(id);
+    PKT(content) = 47;
+    DEVICESTATE(supSendRight) = 0;
 }
           ]]></OnSend>
         </SupervisorOutPin>
@@ -152,52 +152,52 @@ uint8_t secondSent[3] = {0, 0, 0};
         <SupervisorInPin id="" messageTypeId="simple">
           <OnReceive><![CDATA[
           /* Do nothing if we've failed already. */
-          if (supervisorState->failed == 0) {
+          if (SUPSTATE(failed) == 0) {
 
           FILE* resultFile = fopen("test_packet_chain_to_supervisor_result",
                                    "w");
 
           /* Check ID, failing fast. */
-          if (message->id > 2)
+          if (PKT(id) > 2)
           {
               fputs("1", resultFile);
-              supervisorState->failed = 1;
+              SUPSTATE(failed) = 1;
           }
           else {
           /* Check payload, failing fast. */
-          if (message->content != 47 and message->content != 208)
-          {fputs("1", resultFile); supervisorState->failed = 1;}
+          if (PKT(content) != 47 and PKT(content) != 208)
+          {fputs("1", resultFile); SUPSTATE(failed) = 1;}
           else {
 
           /* Check whether we've already received the message in question,
            * failing fast. If not, set that we've received the message. */
-          if (message->content == 47)
+          if (PKT(content) == 47)
           {
-              if (supervisorState->firstSent[message->id] == 1)
-                  {fputs("1", resultFile); supervisorState->failed = 1;}
-              else supervisorState->firstSent[message->id] = 1;
+              if (SUPSTATE(firstSent[PKT(id)]) == 1)
+                  {fputs("1", resultFile); SUPSTATE(failed) = 1;}
+              else SUPSTATE(firstSent[PKT(id)]) = 1;
           }
-          else if (message->content == 208)
+          else if (PKT(content) == 208)
           {
-              if (supervisorState->secondSent[message->id] == 1)
-                  {fputs("1", resultFile); supervisorState->failed = 1;}
-              else supervisorState->secondSent[message->id] = 1;
+              if (SUPSTATE(secondSent[PKT(id)]) == 1)
+                  {fputs("1", resultFile); SUPSTATE(failed) = 1;}
+              else SUPSTATE(secondSent[PKT(id)]) = 1;
           }
 
           /* Check a failure condition. */
-          if (supervisorState->secondSent[0] == 1 or
-              supervisorState->firstSent[2] == 1) {
+          if (SUPSTATE(secondSent[0]) == 1 or
+              SUPSTATE(firstSent[2]) == 1) {
               fputs("1", resultFile);
-              supervisorState->failed = 1;
+              SUPSTATE(failed) = 1;
           }
 
           /* Check the pass condition. */
-          if (supervisorState->firstSent[0] == 1 and
-              supervisorState->secondSent[0] == 0 and
-              supervisorState->firstSent[1] == 1 and
-              supervisorState->secondSent[1] == 1 and
-              supervisorState->firstSent[2] == 0 and
-              supervisorState->secondSent[2] == 1)
+          if (SUPSTATE(firstSent[0]) == 1 and
+              SUPSTATE(secondSent[0]) == 0 and
+              SUPSTATE(firstSent[1]) == 1 and
+              SUPSTATE(secondSent[1]) == 1 and
+              SUPSTATE(firstSent[2]) == 0 and
+              SUPSTATE(secondSent[2]) == 1)
            {
                fputs("0", resultFile);
            }

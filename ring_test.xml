@@ -66,12 +66,12 @@ uint8_t sendMessage = 0;
         <SupervisorOutPin messageTypeId="exfiltration">
           <OnSend><![CDATA[
 /* Define the fields in the message. */
-message->sourceId = deviceProperties->id;
-message->lap = deviceState->lap;
+PKT(sourceId) = DEVICEPROPERTIES(id);
+PKT(lap) = DEVICESTATE(lap);
 
 /* Since we're sending a message, reset this field so that we don't send
  * another one. */
-deviceState->sendMessage = 0;
+DEVICESTATE(sendMessage) = 0;
           ]]></OnSend>
         </SupervisorOutPin>
 
@@ -79,23 +79,23 @@ deviceState->sendMessage = 0;
           <OnReceive><![CDATA[
 /* Only device zero increments the lap counter. Remember - this field in the
  * state is later propagated into the message. */
-deviceState->lap = message->lap;
-if (deviceProperties->id == 0) deviceState->lap += 1;
+DEVICESTATE(lap) = PKT(lap);
+if (DEVICEPROPERTIES(id) == 0) DEVICESTATE(lap) += 1;
 
 /* Don't send a message if the incoming message has completed its tenth lap. */
-if (deviceState->lap <= graphProperties->maxLaps) deviceState->sendMessage = 1;
-else deviceState->sendMessage = 0;
+if (DEVICESTATE(lap) <= GRAPHPROPERTIES(maxLaps)) DEVICESTATE(sendMessage) = 1;
+else DEVICESTATE(sendMessage) = 0;
           ]]></OnReceive>
         </InputPin>
 
         <OutputPin name="sender" messageTypeId="ring_propagate">
           <OnSend><![CDATA[
 /* Define the fields in the message. */
-message->lap = deviceState->lap;
+PKT(lap) = DEVICESTATE(lap);
 
 /* Since we're sending a message, reset this field so that we don't send
  * another one. */
-deviceState->sendMessage = 0;
+DEVICESTATE(sendMessage) = 0;
           ]]></OnSend>
         </OutputPin>
         <!-- This handler is invoked after a message is received, and after
@@ -104,21 +104,21 @@ deviceState->sendMessage = 0;
         <ReadyToSend><![CDATA[
 /* If the input handler determined that we should send a message, do so to the
  * next normal device in the ring, and to our supervisor device. */
-if (deviceState->sendMessage == 1)
+if (DEVICESTATE(sendMessage) == 1)
 {
-    *readyToSend |= RTS_FLAG_sender;
-    *readyToSend |= RTS_SUPER_IMPLICIT_SEND_FLAG;
+    RTS(sender);
+    RTSSUP();
 }
         ]]></ReadyToSend>
         <!-- Initialisation logic. -->
         <OnInit><![CDATA[
 /* Device zero starts things off by telling the ReadyToSend handler to send a
  * message. No other device does this. */
-if (deviceProperties->id == 0) deviceState->sendMessage = 1;
+if (DEVICEPROPERTIES(id) == 0) DEVICESTATE(sendMessage) = 1;
 
 /* A return of one invokes ReadyToSend (in the default softswitch), whereas a
  * return of zero does not. */
-return deviceState->sendMessage;
+return DEVICESTATE(sendMessage);
         ]]></OnInit>
       </DeviceType>
 
@@ -144,55 +144,55 @@ bool finished = false;
 FILE* resultFile;
         ]]></State>
         <OnInit><![CDATA[
-supervisorState->messagesPerDevice = \
-    std::vector<uint8_t>(graphProperties->numDevices, 0);
-supervisorState->resultFile = fopen("ring_test_output", "w");
+SUPSTATE(messagesPerDevice) = \
+    std::vector<uint8_t>(GRAPHPROPERTIES(numDevices), 0);
+SUPSTATE(resultFile) = fopen("ring_test_output", "w");
         ]]></OnInit>
         <SupervisorInPin id="" messageTypeId="exfiltration">
           <OnReceive><![CDATA[
 /* If the application has failed, don't act on any more messages. */
-if (!supervisorState->failed)
+if (!SUPSTATE(failed))
 {
     /* Failure condition: once we've finished, we fail if we receive any more
      * messages. Also, fail if we receive a message that has done too many
      * laps. Note that this does not fail if the messages are received out of
      * order - POETS guarantees delivery, not ordering. */
-    if (message->lap > graphProperties->maxLaps or supervisorState->finished)
+    if (PKT(lap) > GRAPHPROPERTIES(maxLaps) or SUPSTATE(finished))
     {
-        supervisorState->failed = true;
-        fprintf(supervisorState->resultFile, "0");
+        SUPSTATE(failed) = true;
+        fprintf(SUPSTATE(resultFile), "0");
     }
 
     /* If we've not failed, track the message, and check the finishing
      * condition. */
     else
     {
-        supervisorState->messagesPerDevice.at(message->sourceId) += 1;
+        SUPSTATE(messagesPerDevice.at(PKT(sourceId))) += 1;
 
         /* Check the finishing condition. */
-        supervisorState->finished = true;
+        SUPSTATE(finished) = true;
         for (std::vector<uint8_t>::size_type index = 0;
-             index < graphProperties->numDevices; index++)
+             index < GRAPHPROPERTIES(numDevices); index++)
         {
-            if (supervisorState->messagesPerDevice.at(index) !=
-                graphProperties->maxLaps + 1)
+            if (SUPSTATE(messagesPerDevice.at(index)) !=
+                GRAPHPROPERTIES(maxLaps) + 1)
             {
-                supervisorState->finished = false;
+                SUPSTATE(finished) = false;
                 break;
             }
         }
 
         /* Check the finish condition. */
-        if (supervisorState->finished)
+        if (SUPSTATE(finished))
         {
-            fprintf(supervisorState->resultFile, "1");
+            fprintf(SUPSTATE(resultFile), "1");
         }
     }
 }
           ]]></OnReceive>
         </SupervisorInPin>
         <OnStop><![CDATA[
-fclose(supervisorState->resultFile);
+fclose(SUPSTATE(resultFile));
         ]]></OnStop>
       </SupervisorType>
     </DeviceTypes>

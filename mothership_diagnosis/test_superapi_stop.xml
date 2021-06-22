@@ -23,7 +23,7 @@ received after the stop request is made.
     <DeviceTypes>
       <DeviceType id="spammer">
         <ReadyToSend><![CDATA[
-*readyToSend |= RTS_SUPER_IMPLICIT_SEND_FLAG;
+RTSSUP();
         ]]></ReadyToSend>
         <OnDeviceIdle><![CDATA[
 return 1;
@@ -43,8 +43,8 @@ uint32_t packetCount = 0;
         ]]></State>
         <SupervisorInPin id="" messageTypeId="simple">
           <OnReceive><![CDATA[
-if (supervisorState->packetCount == 0) Super::stop_application();
-supervisorState->packetCount++;
+if (SUPSTATE(packetCount) == 0) Super::stop_application();
+SUPSTATE(packetCount)++;
           ]]></OnReceive>
         </SupervisorInPin>
         <OnStop><![CDATA[
@@ -55,7 +55,7 @@ fclose(resultFile);
 FILE* spamFile = fopen("test_superapi_stop_spam", "w");
 fprintf(spamFile,
         "%u packets were processed before this application was stopped.\n",
-        supervisorState->packetCount);
+        SUPSTATE(packetCount));
 fclose(spamFile);
         ]]></OnStop>
       </SupervisorType>
