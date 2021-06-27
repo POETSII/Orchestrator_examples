@@ -214,9 +214,9 @@ uint8_t secondSent[3] = {0, 0, 0};
   <GraphInstance id="test_packet_chain_to_supervisor_instance"
                  graphTypeId="test_packet_chain_to_supervisor_type">
     <DeviceInstances>
-      <DevI id="0" type="normal_device" P="0" S="1, 1"/>
-      <DevI id="1" type="normal_device" P="1"/>
-      <DevI id="2" type="normal_device" P="2"/>
+      <DevI id="0" type="normal_device" P="{0}" S="{1,1}"/>
+      <DevI id="1" type="normal_device" P="{1}"/>
+      <DevI id="2" type="normal_device" P="{2}"/>
     </DeviceInstances>
     <EdgeInstances>
       <EdgeI path="1:recv_left-0:send_right"/>

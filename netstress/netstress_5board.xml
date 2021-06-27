@@ -239,7 +239,7 @@
    </GraphType>
   <GraphInstance id="netstress_5board" graphTypeId="net_stress">
     <DeviceInstances>
-      <DevI id="s0000" type="spammer" P="1"/>
+      <DevI id="s0000" type="spammer" P="{1}"/>
       <DevI id="s0001" type="spammer"/>
       <DevI id="s0002" type="spammer"/>
       <DevI id="s0003" type="spammer"/>
