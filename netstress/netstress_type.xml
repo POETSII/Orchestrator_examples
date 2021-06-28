@@ -1,0 +1,240 @@
+<?xml version="1.0"?>
+<Graphs xmlns="" appname="NetStress">
+  <GraphType id="net_stress">
+    <SharedCode><![CDATA[
+      #include <stdlib.h>
+      #include <cmath>
+    ]]></SharedCode>
+    
+    <MessageTypes>
+      <MessageType id="spam">
+        <Message><![CDATA[
+        uint32_t blockCnt;
+        uint32_t rtsRem;
+        ]]></Message>
+      </MessageType>
+      <MessageType id="update">
+        <Message><![CDATA[
+        uint32_t idx;
+        uint32_t spamCnt;
+        uint32_t cycles;
+        uint32_t blockCnt;
+        uint32_t rtsRem;
+        ]]></Message>
+      </MessageType>
+    </MessageTypes>
+    
+    <DeviceTypes>
+      <DeviceType id="spammer">
+        <Properties><![CDATA[
+            uint32_t active = 0;
+            uint32_t spamCheck = 10000;
+        ]]></Properties>
+        <State><![CDATA[
+            uint32_t spamCnt = 0;
+            uint32_t refractory = 0;
+            uint32_t refractoryEnter = 0;
+            uint32_t refractoryExit = 0;
+        ]]></State>
+        
+        <SharedCode><![CDATA[
+            #include "tinsel.h"
+
+            // ~2 seconds to allow things to settle
+            const uint32_t refractoryPeriod = (TinselClockFreq * 2000000);
+
+            // ~5 seconds of spam
+            const uint32_t spamPeriod = (TinselClockFreq * 5000000);   
+        ]]></SharedCode>
+                  
+        <ReadyToSend><![CDATA[  
+            // We ALWAYS send if we are active and not in a refractory period
+            if((DEVICEPROPERTIES(active) > 0) && (DEVICESTATE(refractory) == 0))
+            {
+            RTS(spamOut);
+            }
+        ]]></ReadyToSend>
+        
+        <OnDeviceIdle><![CDATA[
+            if(DEVICEPROPERTIES(active) > 0)
+            {
+            // Check to see if the refractory period is over
+            uint32_t cycles = tinselCycleCount();
+            if((cycles - deviceState->refractoryEnter) 
+                > refractoryPeriod)
+            {
+              deviceState->refractory = 0;
+              deviceState->refractoryExit = cycles;
+            }
+
+            return 1;
+            } else {
+            return 0;
+            }
+        ]]></OnDeviceIdle>
+        
+        <OutputPin name="spamOut" messageTypeId="spam">
+          <OnSend><![CDATA[   
+            /* HACKS ABOUND: we burgle ThreadContext for giggles. */
+            
+            // Get the blocked count. We have to get to the ThreadContext 
+            // through the backpointer in the deviceInstance.
+            PKT(blockCnt) = deviceInstance->thread->blockCount;
+            
+            
+            // Get the RTS buffer count
+            PKT(rtsRem) = (deviceInstance->thread->rtsEnd >=
+                                           deviceInstance->thread->rtsStart)   ?
+                          (((deviceInstance->thread->rtsBuffSize - 
+                                    deviceInstance->thread->rtsEnd) +
+                                    deviceInstance->thread->rtsStart))         :
+                          (deviceInstance->thread->rtsStart - 
+                                    deviceInstance->thread->rtsEnd);
+            
+            if(DEVICESTATE(spamCnt)++ > DEVICEPROPERTIES(spamCheck))
+            {
+              DEVICESTATE(spamCnt) = 0;
+              
+              // Check to see if we need to enter a refractory period
+              uint32_t cycles = tinselCycleCount();
+              if((cycles - DEVICESTATE(refractoryExit)) 
+                  > spamPeriod)
+              {
+                DEVICESTATE(refractory) = 1;
+                DEVICESTATE(refractoryEnter) = cycles;
+              }
+            }
+          ]]></OnSend>
+        </OutputPin>
+      </DeviceType>
+           
+      <DeviceType id="receiver">        
+        <State><![CDATA[
+            uint32_t active = 0;
+            uint32_t idx = 1;
+            uint32_t lastCycles = 0;
+            uint32_t spamCnt = 0;
+            uint32_t maxBlockCnt = 0;
+            uint32_t minRTSCnt = UINT32_MAX;
+        ]]></State>
+        
+        <SharedCode><![CDATA[
+            #include "tinsel.h"
+            
+            // ~1 seconds for sending updates to supervisor
+            const uint32_t cyclePeriod = (TinselClockFreq * 1000000);
+        ]]></SharedCode>
+        
+        <ReadyToSend><![CDATA[  
+          // We never send anything, except a ~1Hz update to the supervisor
+          if((tinselCycleCount() - DEVICESTATE(lastCycles)) 
+                > cyclePeriod)
+          {
+            RTSSUP();
+          }
+        ]]></ReadyToSend>
+        
+        <OnDeviceIdle><![CDATA[
+          return 1;
+        ]]></OnDeviceIdle>
+        
+        <InputPin name="spamIn" messageTypeId="spam">
+          <OnReceive><![CDATA[
+            // Receive some spam
+            DEVICESTATE(spamCnt)++;
+            if(PKT(blockCnt) > DEVICESTATE(maxBlockCnt))
+            {
+              DEVICESTATE(maxBlockCnt) = PKT(blockCnt);
+            }
+            
+            if(PKT(rtsRem) < DEVICESTATE(minRTSCnt))
+            {
+              DEVICESTATE(minRTSCnt) = PKT(rtsRem);
+            }
+            
+          ]]></OnReceive>
+        </InputPin>
+        
+        <SupervisorOutPin messageTypeId="update">
+          <OnSend><![CDATA[
+            uint32_t cycles = tinselCycleCount();
+            
+            PKT(idx) = DEVICESTATE(idx)++;
+            PKT(spamCnt) = DEVICESTATE(spamCnt);
+            PKT(cycles) = cycles - DEVICESTATE(lastCycles);
+            PKT(blockCnt) = DEVICESTATE(maxBlockCnt);
+            PKT(rtsRem) = DEVICESTATE(minRTSCnt);
+            
+            // Update cycle count
+            DEVICESTATE(lastCycles) = cycles;
+            
+            DEVICESTATE(maxBlockCnt) = 0;
+            DEVICESTATE(minRTSCnt) = UINT32_MAX;
+          ]]></OnSend>
+        </SupervisorOutPin>
+      </DeviceType>
+      
+      <SupervisorType id="supervisorNode">
+        <State><![CDATA[
+          uint64_t spamCnt = 0;
+          uint32_t active = 0;
+          double totalTime = 0;
+        ]]></State>
+          
+        <Code><![CDATA[
+          #include <fstream>
+          #include <iostream>
+          #include <sstream>
+          #include <string>
+          #include <cstdio>
+          #include <iomanip>
+          #include <cmath>
+          
+          // ~1 second
+          const uint32_t cyclesPerSec = (TinselClockFreq * 1000000);
+            
+          std::ofstream oFile;
+        ]]></Code>
+        
+        <OnInit><![CDATA[
+            oFile.open("spammer_out.csv"); 
+            oFile << "idx,time,deltaT,cycles,spamCnt,";
+            oFile << "totalSpam,blockCnt,RTSSlotsLeft" << std::endl;
+            oFile << "0,0,0,0,0,0,0,0" << std::endl;
+            SUPSTATE(active) = 1;
+        ]]></OnInit>
+      
+        <SupervisorInPin id="updateIn" messageTypeId="update">
+          <OnReceive><![CDATA[           
+            double deltaT = static_cast<double>(PKT(cycles))/cyclesPerSec;
+            SUPSTATE(totalTime) += deltaT;
+            
+            SUPSTATE(spamCnt) += PKT(spamCnt);
+            
+            oFile << PKT(idx) << ",";               // idx
+            oFile << SUPSTATE(totalTime) << ",";    // time
+            oFile << deltaT << ",";                 // deltaT
+            oFile << PKT(cycles) << ",";            // cycles
+            oFile << PKT(spamCnt) << ",";           // spamCnt
+            oFile << SUPSTATE(spamCnt) << ",";      // totalSpam
+            oFile << PKT(blockCnt) << ",";          // blockCnt
+            oFile << PKT(rtsRem) << ",";            // RTS Buffer space left
+            oFile << std::endl;
+            
+            std::cout << "IDX: " << PKT(idx);
+            std::cout << "\t Spam: " << PKT(spamCnt);
+            std::cout << "\t Total Spam: " << SUPSTATE(spamCnt);
+            std::cout << "\t Blocked: " << PKT(blockCnt);
+            std::cout << "\t RTS Rem: " << PKT(rtsRem);
+            std::cout << std::endl;
+            
+          ]]></OnReceive>
+        </SupervisorInPin>
+        
+        <OnStop><![CDATA[
+            oFile.close();
+        ]]></OnStop>
+      </SupervisorType>
+    </DeviceTypes>
+   </GraphType>
+</Graphs>
