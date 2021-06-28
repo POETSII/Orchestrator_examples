@@ -20,10 +20,12 @@ to generate more device instances.
 <Graphs xmlns="" appname="test_ddos_supervisor">
   <GraphType id="test_ddos_supervisor_type">
     <MessageTypes>
-      <MessageType id="simple"><![CDATA[
+      <MessageType id="simple">
+        <Message><![CDATA[
 uint32_t id;
 uint32_t content;
-      ]]></MessageType>
+        ]]></Message>
+      </MessageType>
     </MessageTypes>
     <DeviceTypes>
       <DeviceType id="spammer">

@@ -26,9 +26,11 @@ This XML demonstrates that:
     ]]></Properties>
     
     <MessageTypes>
-      <MessageType id="ping"><![CDATA[
+      <MessageType id="ping">
+        <Message><![CDATA[
         uint32_t pingCnt;
-      ]]></MessageType>
+        ]]></Message>
+      </MessageType>
     </MessageTypes>
     
     <DeviceTypes>

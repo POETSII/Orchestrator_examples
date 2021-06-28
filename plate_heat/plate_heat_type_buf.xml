@@ -18,14 +18,19 @@
     ]]></Properties>
 
     <MessageTypes> 
-    <MessageType id="heartbeat"><![CDATA[
-    ]]></MessageType>
+    <MessageType id="heartbeat">
+        <Message><![CDATA[
+        ]]></Message>
+    </MessageType>
 
-    <MessageType id="update"><![CDATA[
+    <MessageType id="update">
+        <Message><![CDATA[
     float t;
-    ]]></MessageType>
+        ]]></Message>
+    </MessageType>
 
-    <MessageType id="finished"><![CDATA[
+    <MessageType id="finished">
+        <Message><![CDATA[
     uint32_t x;
     uint32_t y;
     float t;
@@ -36,7 +41,8 @@
     uint32_t wCnt;
     uint32_t oCnt;
     uint8_t fin;
-    ]]></MessageType>
+        ]]></Message>
+    </MessageType>
     </MessageTypes>
 
     <DeviceTypes>

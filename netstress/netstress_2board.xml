@@ -8,17 +8,21 @@
     
     
     <MessageTypes>
-      <MessageType id="spam"><![CDATA[
+      <MessageType id="spam">
+        <Message><![CDATA[
         uint32_t blockCnt;
         uint32_t rtsRem;
-      ]]></MessageType>
-      <MessageType id="update"><![CDATA[
+        ]]></Message>
+      </MessageType>
+      <MessageType id="update">
+        <Message><![CDATA[
         uint32_t idx;
         uint32_t spamCnt;
         uint32_t cycles;
         uint32_t blockCnt;
         uint32_t rtsRem;
-      ]]></MessageType>
+        ]]></Message>
+      </MessageType>
     </MessageTypes>
     
     <DeviceTypes>
