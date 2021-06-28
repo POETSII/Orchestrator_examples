@@ -45,10 +45,12 @@ packets (one each from N1 and N2).
 <Graphs xmlns="" appname="test_packet_chain_to_supervisor">
   <GraphType id="test_packet_chain_to_supervisor_type">
     <MessageTypes>
-      <MessageType id="simple"><![CDATA[
+      <MessageType id="simple">
+        <Message><![CDATA[
 uint8_t id;
 uint8_t content;
-      ]]></MessageType>
+        ]]></Message>
+      </MessageType>
     </MessageTypes>
     <DeviceTypes>
       <DeviceType id="normal_device">
@@ -214,9 +216,9 @@ uint8_t secondSent[3] = {0, 0, 0};
   <GraphInstance id="test_packet_chain_to_supervisor_instance"
                  graphTypeId="test_packet_chain_to_supervisor_type">
     <DeviceInstances>
-      <DevI id="0" type="normal_device" P="0" S="1, 1"/>
-      <DevI id="1" type="normal_device" P="1"/>
-      <DevI id="2" type="normal_device" P="2"/>
+      <DevI id="0" type="normal_device" P="{0}" S="{1,1}"/>
+      <DevI id="1" type="normal_device" P="{1}"/>
+      <DevI id="2" type="normal_device" P="{2}"/>
     </DeviceInstances>
     <EdgeInstances>
       <EdgeI path="1:recv_left-0:send_right"/>

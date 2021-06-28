@@ -26,9 +26,11 @@ which contains a zero on pass and non-zero on failure.
 <Graphs xmlns="" appname="test_packet_to_supervisor">
   <GraphType id="test_packet_to_supervisor_type">
     <MessageTypes>
-      <MessageType id="simple"><![CDATA[
+      <MessageType id="simple">
+        <Message><![CDATA[
 uint8_t content;
-      ]]></MessageType>
+        ]]></Message>
+      </MessageType>
     </MessageTypes>
     <DeviceTypes>
       <DeviceType id="normal_device">

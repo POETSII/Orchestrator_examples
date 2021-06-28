@@ -20,14 +20,17 @@
     ]]></Properties>
 
     <MessageTypes>
-    <MessageType id="update"><![CDATA[
+    <MessageType id="update">
+        <Message><![CDATA[
     float t;
 #ifdef PH_DISCARD
     uint32_t idx;
 #endif
-    ]]></MessageType>
+        ]]></Message>
+    </MessageType>
 
-    <MessageType id="finished"><![CDATA[
+    <MessageType id="finished">
+        <Message><![CDATA[
     uint32_t x;
     uint32_t y;
     float t;
@@ -41,7 +44,8 @@
 #ifdef PH_ECHO
     uint32_t echo;
 #endif
-    ]]></MessageType>
+        ]]></Message>
+    </MessageType>
     </MessageTypes>
 
     <DeviceTypes>

@@ -98,7 +98,7 @@ if (supervisorState->worker.joinable()) supervisorState->worker.join();
   </GraphType>
   <GraphInstance id="test_thread_spawning_supervisor_instance"
                  graphTypeId="test_thread_spawning_supervisor_type"
-                 P="1000000000"> <!-- 999999937 is prime -->
+                 P="{1000000000}"> <!-- 999999937 is prime -->
     <DeviceInstances>
       <DevI id="0" type="stub"/>
     </DeviceInstances>

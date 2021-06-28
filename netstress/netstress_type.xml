@@ -6,7 +6,6 @@
       #include <cmath>
     ]]></SharedCode>
     
-    
     <MessageTypes>
       <MessageType id="spam">
         <Message><![CDATA[
@@ -207,7 +206,6 @@
       
         <SupervisorInPin id="updateIn" messageTypeId="update">
           <OnReceive><![CDATA[           
-            
             double deltaT = static_cast<double>(PKT(cycles))/cyclesPerSec;
             SUPSTATE(totalTime) += deltaT;
             
@@ -236,19 +234,7 @@
         <OnStop><![CDATA[
             oFile.close();
         ]]></OnStop>
-        
       </SupervisorType>
-      
     </DeviceTypes>
    </GraphType>
-  <GraphInstance id="netstress_1mailbox" graphTypeId="net_stress">
-    <DeviceInstances>
-      <DevI id="s0000" type="spammer" P="{1}"/>
-      
-      <DevI id="r" type="receiver"/>
-    </DeviceInstances>
-    <EdgeInstances>
-      <EdgeI path="r:spamIn-s0000:spamOut"/>
-    </EdgeInstances>
-  </GraphInstance>
 </Graphs>

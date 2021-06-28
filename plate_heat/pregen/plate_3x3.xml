@@ -27,14 +27,17 @@
     ]]></Properties>
 
     <MessageTypes>
-    <MessageType id="update"><![CDATA[
+    <MessageType id="update">
+        <Message><![CDATA[
     float t;
 #ifdef PH_DISCARD
     uint32_t idx;
 #endif
-    ]]></MessageType>
+        ]]></Message>
+    </MessageType>
 
-    <MessageType id="finished"><![CDATA[
+    <MessageType id="finished">
+        <Message><![CDATA[
     uint32_t x;
     uint32_t y;
     float t;
@@ -48,7 +51,8 @@
 #ifdef PH_ECHO
     uint32_t echo;
 #endif
-    ]]></MessageType>
+        ]]></Message>
+    </MessageType>
     </MessageTypes>
 
     <DeviceTypes>
@@ -566,46 +570,46 @@
     </DeviceTypes>
   </GraphType>
 
-  <GraphInstance id="plate_3x3" graphTypeId="plate_heat" P="3,3,9">
+  <GraphInstance id="plate_3x3" graphTypeId="plate_heat" P="{3,3,9}">
     <DeviceInstances>
-      <DevI id="c_0_0" type="fixedNode" P="1000.000000,0,0"/>
-      <DevI id="c_0_1" type="cell" P="0,1,0,0.031250"/>
-      <DevI id="c_0_2" type="cell" P="0,2,0,0.031250"/>
-      <DevI id="c_1_0" type="cell" P="1,0,0,0.031250"/>
-      <DevI id="c_1_1" type="cell" P="1,1,0,0.031250"/>
-      <DevI id="c_1_2" type="cell" P="1,2,0,0.031250"/>
-      <DevI id="c_2_0" type="cell" P="2,0,0,0.031250"/>
-      <DevI id="c_2_1" type="cell" P="2,1,0,0.031250"/>
-      <DevI id="c_2_2" type="fixedNode" P="-1000.000000,2,2"/>
+      <DevI id="c_0_0" type="fixedNode" P="{1000.000000,0,0}"/>
+      <DevI id="c_0_1" type="cell" P="{0,1,0,0.031250}"/>
+      <DevI id="c_0_2" type="cell" P="{0,2,0,0.031250}"/>
+      <DevI id="c_1_0" type="cell" P="{1,0,0,0.031250}"/>
+      <DevI id="c_1_1" type="cell" P="{1,1,0,0.031250}"/>
+      <DevI id="c_1_2" type="cell" P="{1,2,0,0.031250}"/>
+      <DevI id="c_2_0" type="cell" P="{2,0,0,0.031250}"/>
+      <DevI id="c_2_1" type="cell" P="{2,1,0,0.031250}"/>
+      <DevI id="c_2_2" type="fixedNode" P="{-1000.000000,2,2}"/>
     </DeviceInstances>
     <EdgeInstances>
 
-      <EdgeI path="c_0_1:in-c_0_2:out" P="0"/>
-      <EdgeI path="c_0_1:in-c_1_1:out" P="1"/>
-      <EdgeI path="c_0_1:in-c_0_0:out" P="2"/>
+      <EdgeI path="c_0_1:in-c_0_2:out" P="{0}"/>
+      <EdgeI path="c_0_1:in-c_1_1:out" P="{1}"/>
+      <EdgeI path="c_0_1:in-c_0_0:out" P="{2}"/>
 
-      <EdgeI path="c_0_2:in-c_1_2:out" P="0"/>
-      <EdgeI path="c_0_2:in-c_0_1:out" P="1"/>
+      <EdgeI path="c_0_2:in-c_1_2:out" P="{0}"/>
+      <EdgeI path="c_0_2:in-c_0_1:out" P="{1}"/>
 
-      <EdgeI path="c_1_0:in-c_1_1:out" P="0"/>
-      <EdgeI path="c_1_0:in-c_2_0:out" P="1"/>
-      <EdgeI path="c_1_0:in-c_0_0:out" P="2"/>
+      <EdgeI path="c_1_0:in-c_1_1:out" P="{0}"/>
+      <EdgeI path="c_1_0:in-c_2_0:out" P="{1}"/>
+      <EdgeI path="c_1_0:in-c_0_0:out" P="{2}"/>
 
-      <EdgeI path="c_1_1:in-c_1_2:out" P="0"/>
-      <EdgeI path="c_1_1:in-c_2_1:out" P="1"/>
-      <EdgeI path="c_1_1:in-c_1_0:out" P="2"/>
-      <EdgeI path="c_1_1:in-c_0_1:out" P="3"/>
+      <EdgeI path="c_1_1:in-c_1_2:out" P="{0}"/>
+      <EdgeI path="c_1_1:in-c_2_1:out" P="{1}"/>
+      <EdgeI path="c_1_1:in-c_1_0:out" P="{2}"/>
+      <EdgeI path="c_1_1:in-c_0_1:out" P="{3}"/>
 
-      <EdgeI path="c_1_2:in-c_2_2:out" P="0"/>
-      <EdgeI path="c_1_2:in-c_1_1:out" P="1"/>
-      <EdgeI path="c_1_2:in-c_0_2:out" P="2"/>
+      <EdgeI path="c_1_2:in-c_2_2:out" P="{0}"/>
+      <EdgeI path="c_1_2:in-c_1_1:out" P="{1}"/>
+      <EdgeI path="c_1_2:in-c_0_2:out" P="{2}"/>
 
-      <EdgeI path="c_2_0:in-c_2_1:out" P="0"/>
-      <EdgeI path="c_2_0:in-c_1_0:out" P="1"/>
+      <EdgeI path="c_2_0:in-c_2_1:out" P="{0}"/>
+      <EdgeI path="c_2_0:in-c_1_0:out" P="{1}"/>
 
-      <EdgeI path="c_2_1:in-c_2_2:out" P="0"/>
-      <EdgeI path="c_2_1:in-c_2_0:out" P="1"/>
-      <EdgeI path="c_2_1:in-c_1_1:out" P="2"/>
+      <EdgeI path="c_2_1:in-c_2_2:out" P="{0}"/>
+      <EdgeI path="c_2_1:in-c_2_0:out" P="{1}"/>
+      <EdgeI path="c_2_1:in-c_1_1:out" P="{2}"/>
 
 
     </EdgeInstances>

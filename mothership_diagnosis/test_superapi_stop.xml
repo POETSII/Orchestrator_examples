@@ -16,9 +16,11 @@ received after the stop request is made.
 <Graphs xmlns="" appname="test_superapi_stop">
   <GraphType id="test_superapi_stop_type">
     <MessageTypes>
-      <MessageType id="simple"><![CDATA[
+      <MessageType id="simple">
+        <Message><![CDATA[
 /* Intentionally blank. */
-      ]]></MessageType>
+        ]]></Message>
+      </MessageType>
     </MessageTypes>
     <DeviceTypes>
       <DeviceType id="spammer">

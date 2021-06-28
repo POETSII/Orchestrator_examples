@@ -62,14 +62,14 @@ void writeDev(uint32_t x, uint32_t y, std::vector<fixedNode>& fNodes,
     if(isFixed)
     {
         gFile << "      <DevI id=\"c_" << x << "_" << y; 
-        gFile << "\" type=\"fixedNode\" P=\"";
-        gFile << temp << "," << x << "," << y << "\"/>" << std::endl;
+        gFile << "\" type=\"fixedNode\" P=\"{";
+        gFile << temp << "," << x << "," << y << "}\"/>" << std::endl;
         
         if(dummy && (x < (xMax-1) || y < (yMax-1)))
         {
             // write a dummy padding  device 
             gFile << "      <DevI id=\"dummy_" << x << "_" << y; 
-            gFile << "\" type=\"cell\" P=\"" << x << "," << y << ",1\"/>";
+            gFile << "\" type=\"cell\" P=\"{" << x << "," << y << ",1}\"/>";
             gFile << std::endl;
 
             // Heartbeat Hack
@@ -78,12 +78,12 @@ void writeDev(uint32_t x, uint32_t y, std::vector<fixedNode>& fNodes,
         }
     } else {
         gFile << "      <DevI id=\"c_" << x << "_" << y;
-        gFile << "\" type=\"cell\" P=\"" << x << "," << y << ",0";
+        gFile << "\" type=\"cell\" P=\"{" << x << "," << y << ",0";
         if(minChg != "")
         {
             gFile << "," << minChg;
         }
-        gFile << "\"/>" << std::endl;
+        gFile << "}\"/>" << std::endl;
 
         if(y < yMax-1) //North connection
         {
@@ -456,8 +456,8 @@ int main(int argc, const char * argv[]) {
     //Form the GraphInstance member
     std::ostringstream ssInst;
     ssInst << "  <GraphInstance id=\"" << gIDstr << "\" graphTypeId=\"";
-    ssInst << gType << "\" P=\"" << xMax << "," << yMax << ",";
-    ssInst << nodeCount << "\">";
+    ssInst << gType << "\" P=\"{" << xMax << "," << yMax << ",";
+    ssInst << nodeCount << "}\">";
     gInstance = ssInst.str();
 
     //Write all of the instance preamble
