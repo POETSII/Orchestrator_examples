@@ -1,0 +1,105 @@
+<?xml version="1.0"?>
+<!--
+This XML is a simple test to validate the behaviour of the Softswitch surrounding
+OnSend. This example verifies that OnSend is executed for a pin that wants to 
+send but does not have any connections.
+
+The supervisor will print "State 1  from device" and exit if this test passes.
+-->
+<Graphs xmlns="" appname="OnSendBehaviourApp">
+  <GraphType id="OnSendBehaviour">
+    <SharedCode><![CDATA[
+      #include <stdlib.h>
+    ]]></SharedCode>
+    
+    <MessageTypes>
+      <MessageType id="exfil">
+        <Message><![CDATA[
+        uint32_t state;
+        ]]></Message>
+      </MessageType>
+      <MessageType id="test">
+        <Message><![CDATA[
+        uint32_t idx;
+        uint32_t spamCnt;
+        ]]></Message>
+      </MessageType>
+    </MessageTypes>
+    
+    <DeviceTypes>
+      <DeviceType id="dev1">
+        <Properties><![CDATA[
+            uint32_t active = 0;
+        ]]></Properties>
+        <State><![CDATA[
+            uint32_t lState = 0;
+            uint32_t sSent = 0;
+        ]]></State>
+        
+        <SharedCode><![CDATA[
+        ]]></SharedCode>
+                  
+        <ReadyToSend><![CDATA[
+            if(DEVICESTATE(lState) == 0)
+            {
+                RTS(testOut);
+            }
+            
+            if(DEVICESTATE(sSent) == 0)
+            {
+                RTSSUP();
+            }
+        ]]></ReadyToSend>
+        
+        <OnInit><![CDATA[
+            return 1;       // Trigger RTS
+        ]]></OnInit>
+        
+        <OutputPin name="testOut" messageTypeId="test">
+          <OnSend><![CDATA[
+            PKT(idx) = DEVICESTATE(lState)++;   // Increment flag
+            PKT(spamCnt) = 0;                   
+            DEVICESTATE(sSent) = 0;             // Flag Supervisor not sent
+          ]]></OnSend>
+        </OutputPin>
+        
+        <SupervisorOutPin messageTypeId="exfil">
+          <OnSend><![CDATA[
+            PKT(state) = DEVICESTATE(lState);
+            DEVICESTATE(sSent) = 1;             // Flag Supervisor not sent
+          ]]></OnSend>
+        </SupervisorOutPin>
+      </DeviceType>
+      
+      <SupervisorType id="supervisorNode">
+          
+        <Code><![CDATA[
+          #include <iostream>
+          #include <sstream>
+          #include <string>
+          #include <cstdio>
+        ]]></Code>
+      
+        <SupervisorInPin id="updateIn" messageTypeId="exfil">
+          <OnReceive><![CDATA[
+            
+            std::cout << "State " << PKT(state) << " from device" << std::endl;
+            
+            if(PKT(state) == 1)
+            {
+                Super::stop_application();  
+            }
+          ]]></OnReceive>
+        </SupervisorInPin>
+      </SupervisorType>
+      
+    </DeviceTypes>
+   </GraphType>
+  <GraphInstance id="OnSendBehaviourInst" graphTypeId="OnSendBehaviour">
+    <DeviceInstances>
+      <DevI id="d1" type="dev1"/>
+    </DeviceInstances>
+    <EdgeInstances>
+    </EdgeInstances>
+  </GraphInstance>
+</Graphs>
