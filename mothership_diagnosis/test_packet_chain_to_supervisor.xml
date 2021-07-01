@@ -77,9 +77,9 @@ if (DEVICESTATE(supSendRight) == 1 or DEVICESTATE(supSendLeft) == 1)
     RTSSUP();
 }
         ]]></ReadyToSend>
-        <OnDeviceIdle><![CDATA[
+        <OnInit><![CDATA[
 return DEVICESTATE(sendRight);  /* Initial packet from N0. */
-        ]]></OnDeviceIdle>
+        ]]></OnInit>
         <InputPin name="recv_left" messageTypeId="simple">
           <OnReceive><![CDATA[
 if (PKT(content) == 47)

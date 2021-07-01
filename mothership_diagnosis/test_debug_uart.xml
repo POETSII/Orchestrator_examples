@@ -29,6 +29,15 @@ different hardware addresses (depending on where they are placed):
         <State><![CDATA[
 uint8_t spoken = 0;
         ]]></State>
+        <OnInit><![CDATA[
+return 1;       // Trigger RTS
+        ]]></OnInit>
+        <ReadyToSend><![CDATA[
+if (DEVICESTATE(spoken) == 0)
+{
+    *requestIdle = true;
+}
+        ]]></ReadyToSend>
         <OnDeviceIdle><![CDATA[
 if (DEVICESTATE(spoken) == 0)
 {
@@ -43,6 +52,15 @@ return 0;
         <State><![CDATA[
 uint8_t spoken = 0;
         ]]></State>
+        <OnInit><![CDATA[
+return 1;       // Trigger RTS
+        ]]></OnInit>
+        <ReadyToSend><![CDATA[
+if (DEVICESTATE(spoken) == 0)
+{
+    *requestIdle = true;
+}
+        ]]></ReadyToSend>
         <OnDeviceIdle><![CDATA[
 if (DEVICESTATE(spoken) == 0)
 {

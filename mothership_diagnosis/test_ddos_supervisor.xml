@@ -35,11 +35,15 @@ uint32_t id = 0;
         <State><![CDATA[
 uint32_t tick = 0;
         ]]></State>
+        <OnInit><![CDATA[
+return 1;       // Trigger RTS
+        ]]></OnInit>
         <ReadyToSend><![CDATA[
 if (DEVICESTATE(tick) < 4294967295)
 {
     RTSSUP();
 }
+*requestIdle = true;
         ]]></ReadyToSend>
         <OnDeviceIdle><![CDATA[
 if (DEVICESTATE(tick) < 4294967295) return 1;
