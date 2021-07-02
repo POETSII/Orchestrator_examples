@@ -6,7 +6,6 @@
       #include <cmath>
     ]]></SharedCode>
     
-    
     <MessageTypes>
       <MessageType id="spam">
         <Message><![CDATA[
@@ -54,6 +53,8 @@
             {
             RTS(spamOut);
             }
+        
+            *requestIdle = true;
         ]]></ReadyToSend>
         
         <OnDeviceIdle><![CDATA[
@@ -133,6 +134,8 @@
           {
             RTSSUP();
           }
+        
+          *requestIdle = true;
         ]]></ReadyToSend>
         
         <OnDeviceIdle><![CDATA[
