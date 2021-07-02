@@ -148,10 +148,11 @@
         } else if(DEVICESTATE(updated)) {
             RTS(out);
         }
+        
+        *requestIdle = true;
         ]]></ReadyToSend>
 
         <OnDeviceIdle><![CDATA[
-        /* HACKS ABOUND: we manually throw a packet at ourselves to trigger a HB. */
         if(DEVICESTATE(input) > 0)
         {   // There is a pending update to recalculate
             DEVICESTATE(idleCnt) = 0;
