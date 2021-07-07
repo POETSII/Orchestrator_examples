@@ -37,12 +37,12 @@ uint8_t content;
         <State><![CDATA[
 uint8_t tick = 0;
         ]]></State>
+        <OnInit><![CDATA[
+return 1;       // Trigger RTS
+        ]]></OnInit>
         <ReadyToSend><![CDATA[
 if (DEVICESTATE(tick) == 0) RTSSUP();
         ]]></ReadyToSend>
-        <OnDeviceIdle><![CDATA[
-return !DEVICESTATE(tick);
-        ]]></OnDeviceIdle>
         <SupervisorOutPin messageTypeId="simple">
           <OnSend><![CDATA[
 PKT(content) = 170;  /* = 0b10101010 = 0xAA */

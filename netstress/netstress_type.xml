@@ -53,6 +53,8 @@
             {
             RTS(spamOut);
             }
+        
+            *requestIdle = true;
         ]]></ReadyToSend>
         
         <OnDeviceIdle><![CDATA[
@@ -132,6 +134,8 @@
           {
             RTSSUP();
           }
+        
+          *requestIdle = true;
         ]]></ReadyToSend>
         
         <OnDeviceIdle><![CDATA[

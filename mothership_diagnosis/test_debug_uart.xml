@@ -11,7 +11,7 @@ This XML demonstrates that:
 Different device types are used here to ensure that they have different
 hardware addresses. Note that there are two devices of type "1".
 
-If completed appropriately, six debug bytes should be produced from
+If completed appropriately, five debug bytes should be produced from
 different hardware addresses (depending on where they are placed):
 
  - "0xAA" and "0xBB" (twice)
@@ -29,6 +29,15 @@ different hardware addresses (depending on where they are placed):
         <State><![CDATA[
 uint8_t spoken = 0;
         ]]></State>
+        <OnInit><![CDATA[
+return 1;       // Trigger RTS
+        ]]></OnInit>
+        <ReadyToSend><![CDATA[
+if (DEVICESTATE(spoken) == 0)
+{
+    *requestIdle = true;
+}
+        ]]></ReadyToSend>
         <OnDeviceIdle><![CDATA[
 if (DEVICESTATE(spoken) == 0)
 {
@@ -43,6 +52,15 @@ return 0;
         <State><![CDATA[
 uint8_t spoken = 0;
         ]]></State>
+        <OnInit><![CDATA[
+return 1;       // Trigger RTS
+        ]]></OnInit>
+        <ReadyToSend><![CDATA[
+if (DEVICESTATE(spoken) == 0)
+{
+    *requestIdle = true;
+}
+        ]]></ReadyToSend>
         <OnDeviceIdle><![CDATA[
 if (DEVICESTATE(spoken) == 0)
 {

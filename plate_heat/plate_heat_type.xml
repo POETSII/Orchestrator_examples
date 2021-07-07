@@ -169,6 +169,10 @@
         } else if(DEVICESTATE(updated)) {
             RTS(out);
         }
+        if(deviceInstance->deviceID == 0)
+        {
+            *requestIdle = true;
+        }
         ]]></ReadyToSend>
 
         <OnDeviceIdle><![CDATA[

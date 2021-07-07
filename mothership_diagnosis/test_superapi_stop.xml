@@ -24,8 +24,12 @@ received after the stop request is made.
     </MessageTypes>
     <DeviceTypes>
       <DeviceType id="spammer">
+        <OnInit><![CDATA[
+return 1;       // Trigger RTS
+        ]]></OnInit>
         <ReadyToSend><![CDATA[
 RTSSUP();
+*requestIdle = true;
         ]]></ReadyToSend>
         <OnDeviceIdle><![CDATA[
 return 1;

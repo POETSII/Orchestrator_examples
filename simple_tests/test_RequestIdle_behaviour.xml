@@ -1,0 +1,104 @@
+<?xml version="1.0"?>
+<!--
+This XML is a simple test to validate the behaviour of requestIdle.
+
+The supervisor will print "State 0 from device" followed by "State 1 from device" 
+if requestIdle is respected.
+
+Otherwise, the Supervisor will print "State 0 from device" followed by two prints
+of "State 1 from device". The Supervisor will then exit via an API call.
+-->
+<Graphs xmlns="" appname="RequestIdleBehaviourApp">
+  <GraphType id="RequestIdleBehaviour">
+    <SharedCode><![CDATA[
+      #include <stdlib.h>
+    ]]></SharedCode>
+    
+    <MessageTypes>
+      <MessageType id="exfil">
+        <Message><![CDATA[
+        uint32_t state;
+        ]]></Message>
+      </MessageType>
+    </MessageTypes>
+    
+    <DeviceTypes>
+      <DeviceType id="dev1">
+        <State><![CDATA[
+            uint32_t lState = 0;
+            uint32_t sSent = 0;
+        ]]></State>
+        
+        <SharedCode><![CDATA[
+        ]]></SharedCode>
+                  
+        <ReadyToSend><![CDATA[
+            if(DEVICESTATE(lState) == 0)
+            {
+                *requestIdle = true;
+            }
+            
+            if(DEVICESTATE(sSent) == 0)
+            {
+                RTSSUP();
+            }
+        ]]></ReadyToSend>
+        
+        <OnInit><![CDATA[
+            return 1;       // Trigger RTS
+        ]]></OnInit>
+        
+        <OnDeviceIdle><![CDATA[
+            DEVICESTATE(sSent) = 0;
+            DEVICESTATE(lState) = 1;
+        ]]></OnDeviceIdle>
+        
+        <SupervisorOutPin messageTypeId="exfil">
+          <OnSend><![CDATA[
+            PKT(state) = DEVICESTATE(lState);
+            DEVICESTATE(sSent) = 1;             // Flag Supervisor not sent
+          ]]></OnSend>
+        </SupervisorOutPin>
+      </DeviceType>
+      
+      <SupervisorType id="supervisorNode">
+          
+        <Code><![CDATA[
+          #include <iostream>
+          #include <sstream>
+          #include <string>
+          #include <cstdio>
+        ]]></Code>
+            
+        <State><![CDATA[
+        uint32_t s1count = 0;
+        ]]></State>
+      
+        <SupervisorInPin id="updateIn" messageTypeId="exfil">
+          <OnReceive><![CDATA[
+            
+            std::cout << "State " << PKT(state) << " from device" << std::endl;
+            
+            if(PKT(state) == 1)
+            {
+                SUPSTATE(s1count)++;
+            }
+            
+            if(SUPSTATE(s1count) > 1)
+            {
+                Super::stop_application();  
+            }
+          ]]></OnReceive>
+        </SupervisorInPin>
+      </SupervisorType>
+      
+    </DeviceTypes>
+   </GraphType>
+  <GraphInstance id="RequestIdleBehaviourInst" graphTypeId="RequestIdleBehaviour">
+    <DeviceInstances>
+      <DevI id="d1" type="dev1"/>
+    </DeviceInstances>
+    <EdgeInstances>
+    </EdgeInstances>
+  </GraphInstance>
+</Graphs>
