@@ -1,0 +1,415 @@
+  <GraphType id="reactive">
+
+    <SharedCode><![CDATA[
+    #include <stdlib.h>
+    ]]></SharedCode>
+
+    <Properties><![CDATA[
+    float h = 0.01;
+    ]]></Properties>
+
+    <MessageTypes>
+    <MessageType id="update">
+        <Message><![CDATA[
+        float V;
+        float V1;
+        ]]></Message>
+    </MessageType>
+
+    <MessageType id="exfil">
+        <Message><![CDATA[
+        uint32_t id;
+        uint32_t step;
+        float V;
+        uint32_t fin;
+        uint32_t finIdx;
+        ]]></Message>
+    </MessageType>
+    </MessageTypes>
+
+    <DeviceTypes>
+    <DeviceType id="node">
+        <!-- This is a common-or-garden 2d cell, with no boundary stuff -->
+        <Properties><![CDATA[
+        uint32_t id;
+        uint32_t step;              // Index of the timestep we are in
+        float t;                    // Time step we are in
+        float iZx;                  // actually 1/Zx for multiplication
+        float Rgnd;                 // Total reactive contribution (C/h) of gnd'ed components
+        float Ignd;                 // Total current contribution of gnd'ed current sources
+        float minChg = 0.00001f;    // Minimum change in Vxt to trigger a send
+        uint32_t idleMax = IDMAX_DEF;   //10000;
+        ]]></Properties>
+
+        <State><![CDATA[
+        float Vxt = 0.0f;
+        float Vxt1 = 0.0f;
+        uint32_t input = 0;
+        uint32_t updated = 0;
+        uint32_t idleCnt = 0;
+        uint32_t fin = 0;
+        uint32_t finSent = 0;
+        uint32_t finIdx = 0;
+        ]]></State>
+
+        <SharedCode><![CDATA[
+        #include "tinsel.h"
+        #include <stdint.h>
+        #include <math.h>
+        
+        int recomputeDevice(PDeviceInstance* deviceInstance)
+        {
+            // HACKS ABOUND: We pillage the Softswitch data structure to access
+            // the edge states. We do this as we cannot have a dynamic storage
+            // structure in the deviceState and we could have any no. of edges.
+            
+            // ASSUMPTIONS: The input pin that we are pillaging is the FIRST one
+            // defined below.
+            
+            reactive_node_state_t* deviceState = static_cast<
+                    reactive_node_state_t*>(deviceInstance->state);
+            const reactive_node_properties_t* deviceProperties = static_cast<
+                    const reactive_node_properties_t*>(deviceInstance->properties);
+            uint32_t edgeCnt = deviceInstance->inputPins[0].numEdges;
+            
+            deviceState->input = 0;
+            
+            float Vxt = 0.0;
+            
+            for(uint32_t e = 0; e < edgeCnt; e++)
+            {   // Iterate over the edges to grab the intermediate values
+                void* eState = deviceInstance->inputPins[0].inEdges[e].state;
+                reactive_node_in_state_t* edgeState = 
+                            static_cast<reactive_node_in_state_t*>(eState);
+                
+                const void* eProps = deviceInstance->inputPins[0].inEdges[e].properties;
+                const reactive_node_in_properties_t* edgeProps = 
+                            static_cast<const reactive_node_in_properties_t*>(eProps);
+                
+                // Values of convenience
+                float arg = edgeProps->arg;
+                float V = edgeState->V;
+                float V1 = edgeState->V1;
+                float Vxt1 = deviceState->Vxt1;
+                
+                switch(edgeProps->type)
+                {
+                    case 0: // Conductive element (resistor)
+                            Vxt += (arg * V);
+                            break;
+                    
+                    case 1: // Reactive element (capacitor)
+                            Vxt += (((V - V1) + Vxt1) * arg);
+                            break;
+                    
+                    case 2: // Current source.
+                            Vxt += arg;
+                            break;
+                    
+                    default:// ERROR: invalid type. Should not get here!
+                            break;
+                }
+            }
+            
+            // Add the grounded reactance
+            Vxt += (deviceProperties->Rgnd * deviceState->Vxt1);
+            
+            // Add the grounded current source contribution
+            Vxt += deviceProperties->Ignd;
+            
+            // Turn it into a voltage
+            Vxt *= deviceProperties->iZx;     // Apply 1/Zx
+            
+            // Difference check
+            //if(fabs(Vxt - deviceState->Vxt) >= deviceProperties->minChg)
+            float VxtAbs = fabs((float)Vxt - (float)deviceState->Vxt);
+            if(VxtAbs >= deviceProperties->minChg)
+            {
+                // Change in value is significant enough to update
+                deviceState->updated = 1;
+                deviceState->Vxt = Vxt;
+                deviceState->fin = 0;
+                return 1;
+            }
+            
+            return 0;
+        }
+        ]]></SharedCode>
+
+        <ReadyToSend><![CDATA[  
+        if((DEVICESTATE(fin) == 1) ^ (DEVICESTATE(finSent)==1)) {
+            RTSSUP();
+        }
+        
+        if(DEVICESTATE(updated)) {
+            RTS(out);
+        }
+        
+        *requestIdle = true;
+        ]]></ReadyToSend>
+        
+        <OnInit><![CDATA[
+        // We do an initial calculation to kick start the app. Only devices with
+        // current sources will send an initial packet as everything else is 0.
+        return recomputeDevice(deviceInstance);
+        ]]></OnInit>
+
+        <OnDeviceIdle><![CDATA[
+        if(DEVICESTATE(input) > 0)
+        {   // There is a pending update to recalculate
+            DEVICESTATE(idleCnt) = 0;
+            recomputeDevice(deviceInstance);
+        }
+        else
+        {
+            DEVICESTATE(idleCnt++);
+            if(DEVICESTATE(idleCnt) > DEVICEPROPERTIES(idleMax))
+            {   // We have hit an idle limit, flag Finished!
+                DEVICESTATE(fin) = 1;
+            }
+        }
+        
+        return(1);
+        ]]></OnDeviceIdle>
+
+        <!-- Device State Handlers -->       
+        <InputPin name="in" messageTypeId="update">
+        <Properties><![CDATA[
+        uint32_t type;       // Edge type. 0 = Conductance, 1 = Reactance, 2 = I source
+        float arg;
+        ]]></Properties>
+        
+        <State><![CDATA[
+        float V = 0.0;
+        float V1 = 0.0;
+        ]]></State>
+        
+        <OnReceive><![CDATA[
+        edgeState->V = PKT(V);
+        edgeState->V1 = PKT(V1);
+        
+        DEVICESTATE(input) = 1;
+        DEVICESTATE(idleCnt) = 0;
+        ]]></OnReceive>
+        </InputPin>
+
+        <InputPin name="past" messageTypeId="update">
+        <OnReceive><![CDATA[
+        // Save the V from the last timestep
+        DEVICESTATE(Vxt1) = PKT(V);
+        DEVICESTATE(input) = 1;
+        DEVICESTATE(idleCnt) = 0;
+        ]]></OnReceive>
+        </InputPin>
+        
+        <OutputPin name="out" messageTypeId="update">
+        <OnSend><![CDATA[
+        PKT(V) = DEVICESTATE(Vxt);
+        PKT(V1) = DEVICESTATE(Vxt1);
+        DEVICESTATE(updated) = 0;
+        ]]></OnSend>
+        </OutputPin>
+        
+        <!-- Experiment Termination Handlers -->
+        <SupervisorOutPin messageTypeId="exfil">
+        <OnSend><![CDATA[
+        //It's a toggle.
+        if(DEVICESTATE(fin) && !DEVICESTATE(finSent)) //Finished, but have not sent
+        {
+            DEVICESTATE(finIdx)++;    //Increment BEFORE use!!!
+            DEVICESTATE(finSent) = 1;
+            PKT(fin) = 1;
+        }
+        else if(!DEVICESTATE(fin) && DEVICESTATE(finSent)) //Sent but finished cancelled
+        { 
+            DEVICESTATE(finSent) = 0;
+            PKT(fin) = 0;
+        }
+        else    // This is an echo packet
+        {
+            PKT(fin) = UINT32_MAX;
+        }
+        PKT(finIdx) = DEVICESTATE(finIdx);
+
+        PKT(id) = DEVICEPROPERTIES(id);
+        PKT(step) = DEVICEPROPERTIES(step);
+        PKT(V) = DEVICESTATE(Vxt);
+        ]]></OnSend>
+        </SupervisorOutPin>
+    </DeviceType>
+ 
+    <SupervisorType id="supervisorNode">
+        <Code><![CDATA[
+        #include <fstream>
+        #include <iostream>
+        #include <sstream>
+        #include <string>
+        #include <cstdio>
+        #include <iomanip>
+        #include <cmath>
+        #include <vector>
+        #include <limits>
+        #include <chrono>
+        
+        #define USEDEBUG
+        
+        #ifdef USEDEBUG
+          #define DEBUG_PRINT(x) std::cout << std::setprecision(2) << x << std::endl
+        #else
+          #define DEBUG_PRINT(x)
+        #endif
+        
+        typedef struct nodeDataType
+        {
+            uint8_t fin = 0;
+            uint16_t finIdx = 0;
+            float v = 0.0;
+        } nodeData_t;
+        
+        ]]></Code>
+        
+        <Properties><![CDATA[
+        uint32_t nodeCount = NODE_DEF;
+        uint32_t stepCount = STEP_DEF;
+        uint32_t devCount = DEV_DEF;
+        float tStep = TS_DEF;
+        uint32_t loopMax = 1000;
+        ]]></Properties>
+            
+        <State><![CDATA[
+        std::vector<std::vector<nodeData_t> > data = 
+            std::vector<std::vector<nodeData_t> >(NODE_DEF, std::vector<nodeData_t>(STEP_DEF));
+        uint32_t loopCount = 0;
+        
+        uint32_t finCount = 0;
+        uint32_t finRec = 0;
+        
+        time_t tStart;
+        time_t tEnd;
+        
+        std::chrono::high_resolution_clock::time_point cStart;
+        std::chrono::high_resolution_clock::time_point cEnd;
+        ]]></State>
+        
+        <OnInit><![CDATA[
+        SUPSTATE(tStart) = std::time(NULL);
+        SUPSTATE(cStart) = std::chrono::high_resolution_clock::now();
+        ]]></OnInit>
+        
+
+        <!-- XSIZE_DEF, YSIZE_DEF and NODE_DEF are replaced by the generator. -->
+        <!-- This is a complete hack and needs some thought in how to parameterise. -->
+        <SupervisorInPin id="finished" messageTypeId="exfil">
+          <OnReceive><![CDATA[
+            if(PKT(id) >= SUPPROPERTIES(nodeCount))
+            {
+              // Something has gone horribly wrong and we have received a packet
+              // for a node that can't exist.
+              DEBUG_PRINT("ERR_MSG_NODE_OF");
+            } 
+            else if(PKT(step) >= SUPPROPERTIES(stepCount))
+            {
+              // Something has gone horribly wrong and we have received a step
+              // for a node that can't exist.
+              DEBUG_PRINT("ERR_MSG_STEP_OF");
+            }
+            else
+            {
+              if(PKT(fin) && (PKT(finIdx) > SUPSTATE(data[PKT(id)][PKT(step)].finIdx)))
+              {
+                //It's a finished message that is newer than what we have.
+                
+                if(!SUPSTATE(data[PKT(id)][PKT(step)].fin))
+                {   //Node is not already finished.
+                    SUPSTATE(finCount)++;
+                }
+                
+                SUPSTATE(data[PKT(id)][PKT(step)].fin) = 1;
+                SUPSTATE(data[PKT(id)][PKT(step)].finIdx) = PKT(finIdx);
+                SUPSTATE(data[PKT(id)][PKT(step)].v) = PKT(V);
+              } 
+              else if(!(PKT(fin)) && PKT(finIdx) >= SUPSTATE(data[PKT(id)][PKT(step)].finIdx))
+              {
+                //It's a not finished message cancelling the current or future finished message
+                
+                if(SUPSTATE(data[PKT(id)][PKT(step)].fin))
+                {   //Node is already finished.
+                    SUPSTATE(finCount)--; 
+                }
+
+                SUPSTATE(data[PKT(id)][PKT(step)].fin) = 0;
+                SUPSTATE(data[PKT(id)][PKT(step)].finIdx) = PKT(finIdx);
+                SUPSTATE(data[PKT(id)][PKT(step)].v) = PKT(V);
+              }
+              else
+              { //Otherwise do nothing with the finish message as it is a duplicate.
+              
+              }
+              
+              DEBUG_PRINT("\tFINCOUNT:" << SUPSTATE(finCount) << "/" << SUPPROPERTIES(devCount) << " " << PKT(id) << "," << PKT(step));
+              
+              /*
+              //Periodic node count updates
+              if(SUPSTATE(loopCount) == 0){
+                DEBUG_PRINT("\tNODES_DONE: " << SUPSTATE(finCount) << "/" << SUPPROPERTIES(devCount));
+                
+                char buffer [100];
+                int cx;
+
+                cx = snprintf (buffer, 100, "NodesDone:%d/%d", SUPSTATE(finCount), SUPPROPERTIES(devCount));
+
+                if (cx>=0 && cx<100){
+                    //handler_log(2,buffer);
+                }
+                SUPSTATE(loopCount) = SUPPROPERTIES(loopMax);
+              }
+              SUPSTATE(loopCount)--;
+              */
+
+              if(SUPSTATE(finCount) >= SUPPROPERTIES(devCount))
+              { //All of the devices have finished, do something.
+                SUPSTATE(tEnd) = std::time(NULL);
+                SUPSTATE(cEnd) = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> diff = SUPSTATE(cEnd) - SUPSTATE(cStart);
+                
+                //Wite data to CSV
+                std::ofstream oFile;
+                std::ostringstream ss;
+
+                ss << "Reactive6_out.csv";
+                oFile.open(ss.str());
+                DEBUG_PRINT("\tOFILE_OPEN: " << ss.str());
+                
+                oFile << std::setprecision(std::numeric_limits<float>::digits10 + 1);
+                oFile << "id, step, t, v, finCount" << std::endl;
+                
+                DEBUG_PRINT("\tRESULTS_WRITE");
+                
+                for(uint32_t iId = 0; iId < SUPPROPERTIES(nodeCount); iId++)
+                {
+                  for(uint32_t iSt = 0; iSt < SUPPROPERTIES(stepCount); iSt++)
+                  {
+                    oFile << iId << "," << iSt << ",";
+                    oFile << (iSt * SUPPROPERTIES(tStep)) << ",";
+                    oFile << SUPSTATE(data[iId][iSt].v) << ",";
+                    oFile << SUPSTATE(data[iId][iSt].finIdx);
+                    oFile << std::endl;
+                  }
+                }
+                DEBUG_PRINT("\tRESULTS_WRITTEN");
+                
+                oFile.close();
+                DEBUG_PRINT("\tOFILE_CLOSE");
+                DEBUG_PRINT("\tPROBLEM COMPLETE in " <<
+                    (SUPSTATE(tEnd) - SUPSTATE(tStart)) << " seconds (" <<
+                    diff.count() << "s)");
+              }
+            }
+
+             
+
+          ]]></OnReceive>
+        </SupervisorInPin>
+    </SupervisorType>
+    </DeviceTypes>
+  </GraphType>
