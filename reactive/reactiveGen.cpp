@@ -427,7 +427,8 @@ void gridGen(std::vector<node>& nodes, uint32_t& nodeCount,
 
 
 void generate(uint32_t nodeCount, float tStep, float tMax, params iparams, 
-                genType_t gType, std::string oFname, bool constrain)
+                genType_t gType, std::string oFname, bool constrain,
+                bool eightbox)
 {
     uint32_t nStep =  static_cast<uint32_t>(tMax / tStep);
     if(fmod(tMax,tStep) != 0)
@@ -592,16 +593,24 @@ void generate(uint32_t nodeCount, float tStep, float tMax, params iparams,
     oFile.close();
     
     // Now generate a call file
-    cFile.open(oFname+".poets");        
+    cFile.open(oFname+".poets");
+    if(eightbox)
+    {
+        cFile << "load /engine = ";
+        cFile << "\"../Tests/StaticResources/Dialect3/Valid/8_box.uif\"\n";
+    }
     cFile << "load /app = +\"" << oFname << ".xml\"\n";
     cFile << "tlink /app = *\n";
     if(constrain)
     {
         cFile << "place /constraint = \"MaxDevicesPerThread\", ";
-        cFile << (((deviceCount%6144)>0)?((deviceCount/6144)+1):(deviceCount/6144));
+        uint32_t tCount = 6144;
+        if(eightbox) tCount = 49152;
+        cFile << (((deviceCount%tCount)>0)?((deviceCount/tCount)+1):(deviceCount/tCount));
         cFile << "\n";
     }
     cFile << "place /bucket = *\n";
+    cFile << "compose /nore = *\n";
     cFile << "compose /app = *\n";
     cFile << "deploy /app = *\n";
     cFile << "initialise /app = *\n";
@@ -619,6 +628,7 @@ int main(int argc, const char * argv[])
     genType_t gType = transmission;
     params gParams = {100.0f, 1000.0f, 0.0001f, 0.0f, 0.0f, 0.0f};
     bool constrain = false;
+    bool eightbox = false;
     
     std::string oFname;
     //params dparams = {1000.0f, 0.0f, 0.0001f, 0.0f, 100,0f, 0.0f};    // Decay default
@@ -652,6 +662,7 @@ int main(int argc, const char * argv[])
     
     
     args::Flag cnIn(optional, "Constrain", "Constrain the number of devices per thread to distribute the problem over more of the system. Default = false", {'c'});
+    args::Flag ebIn(optional, "Eightbox", "Flag that the generated call file should be for an eight-box system. Default = false", {'8'});
     
     try
     {
@@ -693,7 +704,7 @@ int main(int argc, const char * argv[])
     else if(gdIn)       gType = grid;
     
     if(cnIn)            constrain = true;
-    
+    if(ebIn)            eightbox = true;
     
     // Sort out the output filename
     oFname = "reactive";
@@ -716,6 +727,6 @@ int main(int argc, const char * argv[])
     if(v1In)        gParams.V1 = args::get(v1In);
     if(v2In)        gParams.V2 = args::get(v2In);
     
-    generate(nodeCount, tStep, tMax, gParams, gType, oFname, constrain);
+    generate(nodeCount,tStep,tMax,gParams,gType,oFname,constrain,eightbox);
     return 0;
 }
