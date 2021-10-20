@@ -1,0 +1,166 @@
+  <GraphType id="calc">
+    <Properties><![CDATA[
+    uint32_t nodeCount;
+    uint32_t iterMax = 10000;
+    ]]></Properties>
+    
+    <SharedCode>
+    <![CDATA[
+        union val_t
+        {
+          float f;
+          uint32_t i;
+        };
+    ]]></SharedCode>
+
+    <MessageTypes>
+    <MessageType id="update">
+        <Message><![CDATA[
+        uint32_t iter;
+        float fVal;
+        ]]></Message>
+    </MessageType>
+
+    <MessageType id="exfil">
+        <Message><![CDATA[
+        uint32_t idx;
+        uint32_t iter;
+        float fVal;
+        ]]></Message>
+    </MessageType>
+    </MessageTypes>
+
+    <DeviceTypes>
+    <DeviceType id="node">
+        <Properties><![CDATA[
+        uint32_t idx;
+        uint32_t iSeed;
+        float fSeed;
+        uint32_t nMax = 4;
+        ]]></Properties>
+
+        <State><![CDATA[
+        uint32_t nCount[2] = {0,0};
+        uint32_t iter = 0;
+        uint32_t rSend = 0;
+        float fVal;
+        union val_t {float f; uint32_t i;} nVal[2][4];
+        ]]></State>
+
+        <ReadyToSend><![CDATA[
+if(deviceState->iter==graphProperties->iterMax) RTSSUP();
+else if(deviceState->rSend) RTS(out);
+        ]]></ReadyToSend>
+
+        <OnInit><![CDATA[
+        deviceState->rSend = 1;
+        return 1;
+        ]]></OnInit>
+
+        <!-- Device State Handlers -->       
+        <InputPin name="in" messageTypeId="update">
+        <OnReceive><![CDATA[
+uint32_t iter = message->iter;
+deviceState->nVal[iter&1][deviceState->nCount[iter&1]].f = message->fVal;
+deviceState->nCount[iter&1]++;
+
+if(deviceState->nCount[(deviceState->iter)&1] >= deviceProperties->nMax)
+{
+    deviceState->rSend = 1;
+}
+        ]]></OnReceive>
+        </InputPin>
+
+        <OutputPin name="out" messageTypeId="update">
+        <OnSend><![CDATA[
+uint32_t iter = deviceState->iter;
+uint32_t iVal = deviceProperties->iSeed * iter;              // integer multiply
+iVal -= deviceState->nVal[iter&1][0].i;                      // Integer subtraction
+iVal |= deviceState->nVal[iter&1][2].i;                      // bitwise OR
+iVal += deviceState->nVal[iter&1][3].i;                      // Integer addition
+deviceState->fVal = deviceProperties->fSeed * (float)iVal;   // Float multiply
+if(deviceState->nVal[iter&1][1].f != 0.0f) 
+        deviceState->fVal /= deviceState->nVal[iter&1][1].f; // Float divide
+        
+deviceState->nCount[iter&1] = 0;                     // Clear neighbour count
+deviceState->rSend = 0;                              // Clear send flag
+deviceState->iter++;                                 // increment iter
+
+// Fill the Message
+message->iter = deviceState->iter; 
+message->fVal = deviceState->fVal;
+        ]]></OnSend>
+        </OutputPin>
+        
+        <!-- Experiment Termination Handlers -->
+        <SupervisorOutPin messageTypeId="exfil">
+        <OnSend><![CDATA[
+deviceState->rSend = 0;
+message->idx = deviceProperties->idx;   // Node index
+message->iter = deviceState->iter;      // Iteration count
+message->fVal = deviceState->fVal;      // The value for completeness
+deviceState->iter = graphProperties->iterMax+1;
+        ]]></OnSend>
+        </SupervisorOutPin>
+    </DeviceType>
+      
+    <SupervisorType id="supervisorNode">
+        <Code><![CDATA[
+        #include <fstream>
+        #include <iostream>
+        #include <sstream>
+        #include <string>
+        #include <cstdio>
+        #include <iomanip>
+        #include <limits>
+        #include <chrono>
+        
+        #define USEDEBUG
+        
+        #ifdef USEDEBUG
+          #define DEBUG_PRINT(x) std::cout << std::setprecision(2) << x << std::endl
+        #else
+          #define DEBUG_PRINT(x)
+        #endif
+        ]]></Code>
+            
+        <State><![CDATA[
+        uint32_t finCount = 0;
+        
+        time_t tStart;
+        time_t tEnd;
+        
+        std::chrono::high_resolution_clock::time_point cStart;
+        std::chrono::high_resolution_clock::time_point cEnd;
+        ]]></State>
+        
+        <OnInit><![CDATA[
+        SUPSTATE(tStart) = std::time(NULL);
+        SUPSTATE(cStart) = std::chrono::high_resolution_clock::now();
+        ]]></OnInit>
+        
+        <SupervisorInPin id="finished" messageTypeId="exfil">
+          <OnReceive><![CDATA[
+
+SUPSTATE(finCount)++;           // increment finished count.
+
+DEBUG_PRINT("\tF " << SUPSTATE(finCount) << "/" << GRAPHPROPERTIES(nodeCount)  
+                    << " : " << message-> idx << " : " << message->iter 
+                    << " : " << message->fVal);
+
+// If all nodes have communicated, we are done - report time.
+if(SUPSTATE(finCount) >= GRAPHPROPERTIES(nodeCount))
+{  
+    SUPSTATE(tEnd) = std::time(NULL);
+    SUPSTATE(cEnd) = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> diff = SUPSTATE(cEnd) - SUPSTATE(cStart);
+    
+    std::cout << "PROBLEM COMPLETE in " << (SUPSTATE(tEnd) - SUPSTATE(tStart));
+    std::cout << " seconds (" << diff.count() << "s)" << std::endl;;
+}
+          ]]></OnReceive>
+        </SupervisorInPin>
+
+    </SupervisorType>
+    </DeviceTypes>
+  </GraphType>
