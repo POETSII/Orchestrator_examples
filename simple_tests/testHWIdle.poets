@@ -1,0 +1,7 @@
+load /app = +"test_RequestIdle_behaviour.xml"
+tlink /app = *
+place /bucket = *
+compose /app = *
+deploy /app = *
+initialise /app = *
+run /app = *
