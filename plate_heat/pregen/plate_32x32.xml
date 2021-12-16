@@ -102,10 +102,10 @@
         
         void updateTemp(PDeviceInstance* deviceInstance)
         {
-            devtyp_cell_state_t* deviceState = static_cast<
-                    devtyp_cell_state_t*>(deviceInstance->state);
-            const devtyp_cell_props_t* deviceProperties = static_cast<
-                    const devtyp_cell_props_t*>(deviceInstance->properties);
+            plate_heat_cell_state_t* deviceState = static_cast<
+                    plate_heat_cell_state_t*>(deviceInstance->state);
+            const plate_heat_cell_properties_t* deviceProperties = static_cast<
+                    const plate_heat_cell_properties_t*>(deviceInstance->properties);
             
             uint32_t edgeCnt = deviceInstance->inputPins[0].numEdges;
             

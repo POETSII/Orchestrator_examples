@@ -1,0 +1,193 @@
+<?xml version="1.0"?>
+<!--
+This XML is a simple COMPILATION test to validate that devices and supervisors
+can "see" the layout of all of the device structures. This is not meant to be 
+executed, but the Supervisor will print the size of all of the structs and then
+exit.
+-->
+<Graphs xmlns="" appname="StructAccessApp">
+  <GraphType id="StructAccess">
+    <SharedCode><![CDATA[
+      #include <stdlib.h>
+      
+      uint32_t structSize()
+      {
+        size_t ret = 0;
+        ret += sizeof(StructAccess_dev1_properties_t);
+        ret += sizeof(StructAccess_dev1_state_t);
+        ret += sizeof(StructAccess_dev1_in_properties_t);
+        ret += sizeof(StructAccess_dev1_in_state_t);
+        
+        ret += sizeof(StructAccess_dev2_properties_t);
+        ret += sizeof(StructAccess_dev2_state_t);
+        ret += sizeof(StructAccess_dev2_in_properties_t);
+        ret += sizeof(StructAccess_dev2_in_state_t);
+        
+        return (uint32_t)ret;
+      }
+    ]]></SharedCode>
+    
+    <MessageTypes>
+      <MessageType id="exfil">
+        <Message><![CDATA[
+        uint32_t state;
+        ]]></Message>
+      </MessageType>
+      <MessageType id="test">
+        <Message><![CDATA[
+        uint32_t idx;
+        uint32_t spamCnt;
+        ]]></Message>
+      </MessageType>
+    </MessageTypes>
+    
+    <DeviceTypes>
+      <DeviceType id="dev1">
+        <Properties><![CDATA[
+            uint32_t active = 0;
+        ]]></Properties>
+        <State><![CDATA[
+            uint32_t lState = 0;
+            uint32_t sSent = 0;
+            uint32_t sSz = 0;
+        ]]></State>
+                  
+        <ReadyToSend><![CDATA[
+            if(DEVICESTATE(lState) == 0)
+            {
+                RTS(testOut);
+            }
+            
+            if(DEVICESTATE(sSent) == 0)
+            {
+                RTSSUP();
+            }
+        ]]></ReadyToSend>
+        
+        <InputPin name="in" messageTypeId="test">
+        <Properties><![CDATA[
+            uint32_t type;
+            float arg;
+        ]]></Properties>
+        
+        <State><![CDATA[
+            float V = 0.0;
+            float V1 = 0.0;
+        ]]></State>
+        
+        <OnReceive><![CDATA[
+            DEVICESTATE(lState) = PKT(idx);
+            DEVICESTATE(sSz) = structSize();
+        ]]></OnReceive>
+        </InputPin>
+        
+        <OutputPin name="testOut" messageTypeId="test">
+          <OnSend><![CDATA[
+            PKT(idx) = DEVICESTATE(lState)++;   // Increment flag
+            PKT(spamCnt) = 0;                   
+            DEVICESTATE(sSent) = 0;             // Flag Supervisor not sent
+            DEVICESTATE(sSz) = structSize();
+          ]]></OnSend>
+        </OutputPin>
+        
+        <SupervisorOutPin messageTypeId="exfil">
+          <OnSend><![CDATA[
+            PKT(state) = DEVICESTATE(lState);
+            DEVICESTATE(sSent) = 1;             // Flag Supervisor not sent
+            DEVICESTATE(sSz) = structSize();
+          ]]></OnSend>
+        </SupervisorOutPin>
+      </DeviceType>
+      
+      <DeviceType id="dev2">
+        <Properties><![CDATA[
+            uint32_t active = 0;
+        ]]></Properties>
+        <State><![CDATA[
+            uint32_t lState = 0;
+            uint32_t sSent = 0;
+        ]]></State>
+                  
+        <ReadyToSend><![CDATA[
+            if(DEVICESTATE(lState) == 0)
+            {
+                RTS(testOut);
+            }
+            
+            if(DEVICESTATE(sSent) == 0)
+            {
+                RTSSUP();
+            }
+        ]]></ReadyToSend>
+        
+        <InputPin name="in" messageTypeId="test">
+        <Properties><![CDATA[
+            uint32_t type;
+            float arg;
+        ]]></Properties>
+        
+        <State><![CDATA[
+            float V = 0.0;
+            float V1 = 0.0;
+        ]]></State>
+        
+        <OnReceive><![CDATA[
+            DEVICESTATE(lState) = PKT(idx);
+            DEVICESTATE(sSz) = structSize();
+        ]]></OnReceive>
+        </InputPin>
+        
+        <OutputPin name="testOut" messageTypeId="test">
+          <OnSend><![CDATA[
+            PKT(idx) = DEVICESTATE(lState)++;   // Increment flag
+            PKT(spamCnt) = 0;                   
+            DEVICESTATE(sSent) = 0;             // Flag Supervisor not sent
+          ]]></OnSend>
+        </OutputPin>
+        
+        <SupervisorOutPin messageTypeId="exfil">
+          <OnSend><![CDATA[
+            PKT(state) = DEVICESTATE(lState);
+            DEVICESTATE(sSent) = 1;             // Flag Supervisor not sent
+          ]]></OnSend>
+        </SupervisorOutPin>
+      </DeviceType>
+      
+      <SupervisorType id="supervisorNode">
+          
+        <Code><![CDATA[
+          #include <iostream>
+          #include <sstream>
+          #include <string>
+          #include <cstdio>
+        ]]></Code>
+        
+        <OnInit><![CDATA[
+        std::cout << structSize() <<std::endl;
+        
+        Super::stop_application();  
+        ]]></OnInit>
+        
+        <SupervisorInPin id="updateIn" messageTypeId="exfil">
+          <OnReceive><![CDATA[
+            
+            std::cout << "State " << PKT(state) << " from device" << std::endl;
+            
+            if(PKT(state) == 1)
+            {
+                Super::stop_application();  
+            }
+          ]]></OnReceive>
+        </SupervisorInPin>
+      </SupervisorType>
+      
+    </DeviceTypes>
+   </GraphType>
+  <GraphInstance id="StructAccessInst" graphTypeId="StructAccess">
+    <DeviceInstances>
+      <DevI id="d1" type="dev1"/>
+    </DeviceInstances>
+    <EdgeInstances>
+    </EdgeInstances>
+  </GraphInstance>
+</Graphs>

@@ -96,8 +96,8 @@
 
         void updateTemp(void* state, const void* props)
         {
-            devtyp_cell_state_t* deviceState = static_cast<devtyp_cell_state_t*>(state);
-            const devtyp_cell_props_t* deviceProperties = static_cast<const devtyp_cell_props_t*>(props);
+            plate_heat_cell_state_t* deviceState = static_cast<plate_heat_cell_state_t*>(state);
+            const plate_heat_cell_properties_t* deviceProperties = static_cast<const plate_heat_cell_properties_t*>(props);
             
             uint32_t step = (deviceState->iter & 0x01);
             uint32_t connected = deviceState->connected;
