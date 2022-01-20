@@ -1,5 +1,4 @@
-exit /at = "stop"
-load /app = +"test_hwIdle.xml"
+load /app = +"test_doSend.xml"
 tlink /app = *
 place /bucket = *
 compose /app = *
