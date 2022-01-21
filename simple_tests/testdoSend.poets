@@ -1,0 +1,7 @@
+load /app = +"test_doSend.xml"
+tlink /app = *
+place /bucket = *
+compose /app = *
+deploy /app = *
+initialise /app = *
+run /app = *

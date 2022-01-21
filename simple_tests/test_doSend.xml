@@ -1,0 +1,87 @@
+<?xml version="1.0"?>
+<!--
+This XML is a simple test to validate the behaviour of the Softswitch surrounding
+the doSend behaviour in the OnSend handler. This example verifies that doSend is
+present and respected.
+
+The supervisor will print a single string to the console of
+    "** SUPERVISOR** Received Index 10"
+and then exit if the test completes successfully.
+-->
+<Graphs xmlns="" appname="test_doSend">
+  <GraphType id="test_doSend_type">
+    <SharedCode><![CDATA[
+      #include <stdlib.h>
+    ]]></SharedCode>
+    
+    <Properties><![CDATA[
+uint32_t ignoreCnt = 10;
+    ]]></Properties>
+    
+    <MessageTypes>
+      <MessageType id="test">
+        <Message><![CDATA[
+        uint32_t idx;
+        ]]></Message>
+      </MessageType>
+    </MessageTypes>
+    
+    <DeviceTypes>
+      <DeviceType id="A">
+        <State><![CDATA[
+uint8_t sCnt = 0;
+        ]]></State>
+        
+        <OnInit><![CDATA[
+return 1;       // Trigger RTS
+        ]]></OnInit>
+        
+        <ReadyToSend><![CDATA[
+if (DEVICESTATE(sCnt) <= GRAPHPROPERTIES(ignoreCnt))
+{
+    RTSSUP();
+}
+        ]]></ReadyToSend>
+        
+        <SupervisorOutPin messageTypeId="test">
+          <OnSend><![CDATA[
+PKT(idx) = DEVICESTATE(sCnt);
+if (DEVICESTATE(sCnt) < GRAPHPROPERTIES(ignoreCnt))
+{
+    *doSend = false;
+}
+DEVICESTATE(sCnt)++;
+          ]]></OnSend>
+        </SupervisorOutPin>
+      </DeviceType>
+      
+      <SupervisorType id="supervisorNode">
+          
+        <Code><![CDATA[
+          #include <iostream>
+          #include <sstream>
+          #include <string>
+          #include <cstdio>
+        ]]></Code>
+        
+        <SupervisorInPin id="updateIn" messageTypeId="test">
+          <OnReceive><![CDATA[
+std::cout << "** SUPERVISOR** Received Index " << PKT(idx) << std::endl;
+
+if(PKT(idx) >= GRAPHPROPERTIES(ignoreCnt))
+{
+    Super::stop_application();
+}
+          ]]></OnReceive>
+        </SupervisorInPin>
+      </SupervisorType>
+        
+    </DeviceTypes>
+  </GraphType>
+  <GraphInstance id="test_doSend_instance"
+                 graphTypeId="test_doSend_type">
+    <DeviceInstances>
+      <DevI id="0" type="A"/>
+    </DeviceInstances>
+  </GraphInstance>
+</Graphs>

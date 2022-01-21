@@ -1,0 +1,68 @@
+<?xml version="1.0"?>
+<!--
+This XML demonstrates that:
+
+ - Hardware Idle detection works as expected.
+
+This example uses a single device to send one debug byte in its OnIdle handler
+before sending a second byte when the OnHWIdle handler is called.
+
+If completed appropriately, two debug bytes should be produced from
+one hardware address:
+ - "0xAA" followed by "0xBB"
+
+If built with NoRequestIdle, the test will not complete successfully
+and will produce:
+ - "0xAA" followed by a stream of "0xCC"
+
+-->
+<Graphs xmlns="" appname="test_hwidle">
+  <GraphType id="test_hwidle_type">
+    <!-- Normal devices don't send any messages in this application. -->
+    <SharedCode><![CDATA[
+#include "tinsel.h"
+    ]]></SharedCode>
+    <DeviceTypes>
+      <DeviceType id="AABB">
+        <State><![CDATA[
+uint8_t spoken = 0;
+uint8_t spoken2 = 0;
+        ]]></State>
+        <OnInit><![CDATA[
+return 1;       // Trigger RTS
+        ]]></OnInit>
+        <ReadyToSend><![CDATA[
+if (DEVICESTATE(spoken) == 0)
+{
+    *requestIdle = true;
+}
+        ]]></ReadyToSend>
+        <OnDeviceIdle><![CDATA[
+if (DEVICESTATE(spoken) == 0)
+{
+    DEVICESTATE(spoken) = 1;
+    tinselUartTryPut(170);  /* AA */
+}
+else
+{
+    tinselUartTryPut(204);  /* CC */
+}
+return 0;
+        ]]></OnDeviceIdle>
+        <OnHardwareIdle><![CDATA[
+if (DEVICESTATE(spoken2) == 0)
+{
+    DEVICESTATE(spoken2) = 1;
+    tinselUartTryPut(187);  /* BB */
+}
+        ]]></OnHardwareIdle>
+      </DeviceType>
+    </DeviceTypes>
+  </GraphType>
+  <GraphInstance id="test_hwidle_instance"
+                 graphTypeId="test_hwidle_type">
+    <DeviceInstances>
+      <DevI id="0" type="AABB"/>
+    </DeviceInstances>
+  </GraphInstance>
+</Graphs>
