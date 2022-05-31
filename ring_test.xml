@@ -21,16 +21,20 @@ uint8_t maxLaps = 9;  /* Zero-based indexing */
     ]]></Properties>
     <MessageTypes>
       <!-- Communications between normal devices use this message type. -->
-      <MessageType id="ring_propagate"><![CDATA[
+      <MessageType id="ring_propagate">
+        <Message><![CDATA[
 uint8_t lap;
-      ]]></MessageType>
+        ]]></Message>
+      </MessageType>
       <!-- Communications from normal devices to supervisor devices use this
            message type.
        -->
-      <MessageType id="exfiltration"><![CDATA[
+      <MessageType id="exfiltration">
+        <Message><![CDATA[
 uint8_t sourceId;
 uint8_t lap;
-      ]]></MessageType>
+        ]]></Message>
+      </MessageType>
     </MessageTypes>
 
     <DeviceTypes>
@@ -197,7 +201,7 @@ fclose(SUPSTATE(resultFile));
       </SupervisorType>
     </DeviceTypes>
   </GraphType>
-  <GraphInstance id="ring_test_instance" graphTypeId="ring_test_type" P="5">
+  <GraphInstance id="ring_test_instance" graphTypeId="ring_test_type" P="{5}">
     <DeviceInstances>
       <DevI id="0" type="ring_element" P="0"/>
       <DevI id="1" type="ring_element" P="1"/>
